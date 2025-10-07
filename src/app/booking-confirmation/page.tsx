@@ -19,7 +19,7 @@ function ConfirmationCard() {
         patientName: searchParams.get('patientName') || 'غير متوفر',
         patientPhone: searchParams.get('patientPhone') || 'غير متوفر',
         appointmentDate: searchParams.get('appointmentDate') || 'غير متوفر',
-        appointmentTime: search_params.get('appointmentTime') || 'غير متوفر',
+        appointmentTime: searchParams.get('appointmentTime') || 'غير متوفر',
         doctorName: searchParams.get('doctorName') || 'غير متوفر',
         bookingId: searchParams.get('bookingId') || 'N/A',
     };
