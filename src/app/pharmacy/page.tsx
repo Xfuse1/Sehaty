@@ -68,6 +68,8 @@ const features = [
 ];
 
 export default function PharmacyPage() {
+  const whatsappNumber = "201211886649";
+
   return (
     <div className="bg-background text-foreground">
       <header className="bg-primary/5 py-20">
@@ -106,7 +108,7 @@ export default function PharmacyPage() {
                     <div className="flex flex-col items-center justify-center text-center gap-4">
                         <p className="text-muted-foreground">اضغط إرسال وسيتم تحويلك إلى واتساب مباشرةً لاستكمال طلبك مع الصيدلي.</p>
                         <Button asChild size="lg" className="w-full text-lg">
-                            <Link href="https://wa.me/966000000000?text=أرغب%20في%20طلب%20روشتة" target="_blank">
+                            <Link href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent("أرغب في طلب روشتة")}`} target="_blank">
                                 <Bot className="ml-2 h-6 w-6" />
                                 إرسال الطلب الآن
                             </Link>
@@ -153,8 +155,10 @@ export default function PharmacyPage() {
                     <p className="text-primary font-bold text-xl">{product.price}</p>
                   </CardContent>
                   <CardFooter className="p-4 pt-0">
-                    <Button className="w-full" variant="secondary">
-                      اطلب الآن
+                    <Button asChild className="w-full" variant="secondary">
+                      <Link href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`أرغب في طلب منتج: ${product.name}`)}`} target="_blank">
+                        اطلب الآن
+                      </Link>
                     </Button>
                   </CardFooter>
                 </Card>
