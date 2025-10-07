@@ -112,12 +112,41 @@ function PhysiotherapyBookingFlow() {
 
         toast({
             title: "تم استلام طلب الحجز",
-            description: "سيتم التواصل معك في أقرب وقت لتأكيد الموعد.",
+            description: "سيتم تحويلك لواتساب للتواصل وتأكيد الموعد.",
         });
 
+        // Construct WhatsApp message
+        const message = `
+        *طلب حجز باقة علاج طبيعي جديد*
+
+        *تفاصيل الباقة:*
+        - اسم الباقة: ${bookingDetails.packageName}
+        - السعر: ${bookingDetails.packagePrice} ر.س
+
+        *بيانات المريض:*
+        - الاسم: ${bookingDetails.patientName}
+        - العمر: ${bookingDetails.patientAge}
+        - رقم الموبايل: ${bookingDetails.patientPhone}
+        - العنوان: ${bookingDetails.patientAddress}
+
+        *وصف الحالة:*
+        ${bookingDetails.caseDescription}
+
+        *تفاصيل الطلب:*
+        - رقم الطلب: ${bookingDetails.id}
+        - طريقة الدفع: ${bookingDetails.paymentMethod === 'cash' ? 'عند تقديم الخدمة' : 'أونلاين'}
+        `;
+
+        const encodedMessage = encodeURIComponent(message);
+        const finalWhatsappUrl = `${whatsappLink}?text=${encodedMessage}`;
+
+        // Redirect to WhatsApp
+        window.location.href = finalWhatsappUrl;
+
+        // Fallback to stop loading state if redirection fails
         setTimeout(() => {
-            router.push(`/my-bookings`); 
-        }, 1000);
+            setIsBooking(false);
+        }, 5000);
     }
 
     if (isUserLoading || !user || !pkg) {
