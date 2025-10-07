@@ -15,7 +15,7 @@ export default function AdminDashboardPage() {
   
   // This is a temporary solution for admin check during development.
   // In a production app, you would use custom claims.
-  const isAdmin = user?.uid === process.env.NEXT_PUBLIC_ADMIN_UID;
+  const isAdmin = user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
   useEffect(() => {
     if (!isUserLoading) {

@@ -34,7 +34,7 @@ const Logo = () => (
     <div className="flex items-center gap-2">
         <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.27 2 8.5C2 5.41 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.08C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.41 22 8.5C22 12.27 18.6 15.36 13.45 20.03L12 21.35Z" fill="#A78BFA"/>
+                <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM17 13H13V17H11V13H7V11H11V7H13V11H17V13Z" fill="#A78BFA"/>
             </svg>
         </div>
         <span className="font-bold text-xl">صحتي</span>
@@ -47,9 +47,7 @@ export default function Header() {
   const auth = useAuth();
   
   // This is a temporary solution for admin check during development.
-  // The first user in the system is considered the admin.
-  // Replace with a proper role-based system (e.g., custom claims) in production.
-  const isAdmin = user?.uid === process.env.NEXT_PUBLIC_ADMIN_UID;
+  const isAdmin = user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
   const handleLogout = async () => {
     if (auth) {
@@ -155,8 +153,8 @@ export default function Header() {
               <SheetContent side="right">
                   <Link href="/" className="flex items-center gap-2 mb-8">
                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
-                        <rect width="24" height="24" rx="4" fill="white"/>
-                        <path d="M12 18.35L10.55 17.03C6.4 13.25 4 11.12 4 8.5C4 6.5 5.5 5 7.5 5C9.04 5 10.5 5.95 11.07 7.3H12.94C13.5 5.95 14.96 5 16.5 5C18.5 5 20 6.5 20 8.5C20 11.12 17.6 13.25 13.45 17.04L12 18.35Z" fill="#A78BFA"/>
+                        <rect width="24" height="24" rx="6" fill="white"/>
+                        <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM17 13H13V17H11V13H7V11H11V7H13V11H17V13Z" fill="hsl(var(--primary))"/>
                      </svg>
                      <span className="font-bold text-xl text-foreground">صحتي</span>
                   </Link>
