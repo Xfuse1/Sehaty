@@ -5,64 +5,36 @@ import { useRouter } from 'next/navigation';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { CheckCircle, Zap } from "lucide-react";
-import { useUser } from '@/firebase';
+import { CheckCircle, Zap, Loader2 } from "lucide-react";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { collection } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 
-const physiotherapyPackages = [
-  {
-    id: "physio_starter",
-    name: "باقة البداية الصحية",
-    price: "450",
-    duration: "4 جلسات",
-    description: "باقة مثالية لمن يبدأ رحلة العلاج الطبيعي أو يحتاج لمتابعة بسيطة.",
-    features: [
-      "4 جلسات علاج طبيعي منزلية",
-      "تقييم شامل للحالة",
-      "خطة علاجية شخصية",
-      "متابعة عبر الهاتف"
-    ],
-    isPopular: false,
-  },
-  {
-    id: "physio_intensive",
-    name: "الباقة المكثفة",
-    price: "1200",
-    duration: "12 جلسة",
-    description: "برنامج متكامل مصمم لحالات ما بعد الجراحة والإصابات الرياضية.",
-    features: [
-      "12 جلسة علاج طبيعي منزلية",
-      "تقييم دوري كل 4 جلسات",
-      "خطة علاجية متقدمة",
-      "تمارين إعادة تأهيل مخصصة",
-      "دعم واتساب مباشر مع الأخصائي"
-    ],
-    isPopular: true,
-  },
-  {
-    id: "physio_premium",
-    name: "باقة الرعاية الكاملة",
-    price: "850",
-    duration: "8 جلسات",
-    description: "متابعة شاملة للحالات المزمنة وكبار السن لتحسين جودة الحياة.",
-    features: [
-      "8 جلسات علاج طبيعي منزلية",
-      "تقييم شامل مع وضع أهداف",
-      "خطة وقائية لتجنب الإصابات",
-      "إرشادات للعائلة ومقدمي الرعاية"
-    ],
-    isPopular: false,
-  },
-];
-
-type Package = typeof physiotherapyPackages[0];
+interface PhysiotherapyPackage {
+    id: string;
+    name: string;
+    price: number;
+    duration: string;
+    description: string;
+    features: string[];
+    isPopular: boolean;
+}
 
 export default function PhysiotherapyPage() {
     const { user } = useUser();
     const router = useRouter();
     const { toast } = useToast();
+    const firestore = useFirestore();
 
-    const handleBooking = (pkg: Package) => {
+    const packagesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'physiotherapyPackages');
+    }, [firestore]);
+
+    const { data: physiotherapyPackages, isLoading: packagesLoading } = useCollection<Omit<PhysiotherapyPackage, 'id'>>(packagesQuery);
+
+    const handleBooking = (pkg: PhysiotherapyPackage) => {
         if (!user) {
             toast({
                 variant: 'destructive',
@@ -93,50 +65,62 @@ export default function PhysiotherapyPage() {
             </header>
 
             <main className="container mx-auto px-4 py-16 md:py-24">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
-                    {physiotherapyPackages.map((pkg) => (
-                        <Card 
-                            key={pkg.id} 
-                            className={`flex flex-col h-full rounded-2xl shadow-sm transition-all duration-300 ${pkg.isPopular ? 'border-2 border-primary shadow-2xl -translate-y-4' : 'border'}`}
-                        >
-                             {pkg.isPopular && (
-                                <Badge className="absolute -top-3 right-6 flex items-center gap-1 bg-primary border-primary">
-                                    <Zap className="h-4 w-4" />
-                                    الأكثر طلباً
-                                </Badge>
-                            )}
-                            <CardHeader className="text-center">
-                                <CardTitle className="text-2xl font-bold text-primary">{pkg.name}</CardTitle>
-                                <CardDescription>{pkg.duration}</CardDescription>
-                                <div className="text-4xl font-extrabold text-foreground mt-4">
-                                    {pkg.price} <span className="text-lg font-medium text-muted-foreground">ر.س</span>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="flex-grow">
-                                <p className="text-center text-muted-foreground mb-6">{pkg.description}</p>
-                                <ul className="space-y-3 text-sm">
-                                    {pkg.features.map((feature, index) => (
-                                        <li key={index} className="flex items-center gap-3">
-                                            <CheckCircle className="h-5 w-5 text-green-500" />
-                                            <span className="flex-1">{feature}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </CardContent>
-                            <CardFooter>
-                                <Button 
-                                    size="lg" 
-                                    className="w-full" 
-                                    variant={pkg.isPopular ? 'default' : 'secondary'}
-                                    onClick={() => handleBooking(pkg)}
-                                >
-                                    حجز الباقة الآن
-                                </Button>
-                            </CardFooter>
-                        </Card>
-                    ))}
-                </div>
+                 {packagesLoading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                    </div>
+                ) : physiotherapyPackages && physiotherapyPackages.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
+                        {physiotherapyPackages.map((pkg) => (
+                            <Card 
+                                key={pkg.id} 
+                                className={`flex flex-col h-full rounded-2xl shadow-sm transition-all duration-300 ${pkg.isPopular ? 'border-2 border-primary shadow-2xl -translate-y-4' : 'border'}`}
+                            >
+                                {pkg.isPopular && (
+                                    <Badge className="absolute -top-3 right-6 flex items-center gap-1 bg-primary border-primary">
+                                        <Zap className="h-4 w-4" />
+                                        الأكثر طلباً
+                                    </Badge>
+                                )}
+                                <CardHeader className="text-center">
+                                    <CardTitle className="text-2xl font-bold text-primary">{pkg.name}</CardTitle>
+                                    <CardDescription>{pkg.duration}</CardDescription>
+                                    <div className="text-4xl font-extrabold text-foreground mt-4">
+                                        {pkg.price} <span className="text-lg font-medium text-muted-foreground">ر.س</span>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="flex-grow">
+                                    <p className="text-center text-muted-foreground mb-6">{pkg.description}</p>
+                                    <ul className="space-y-3 text-sm">
+                                        {pkg.features.map((feature, index) => (
+                                            <li key={index} className="flex items-center gap-3">
+                                                <CheckCircle className="h-5 w-5 text-green-500" />
+                                                <span className="flex-1">{feature}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </CardContent>
+                                <CardFooter>
+                                    <Button 
+                                        size="lg" 
+                                        className="w-full" 
+                                        variant={pkg.isPopular ? 'default' : 'secondary'}
+                                        onClick={() => handleBooking(pkg)}
+                                    >
+                                        حجز الباقة الآن
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center text-muted-foreground py-16">
+                        <p>لا توجد باقات متاحة حالياً. يرجى التحقق مرة أخرى لاحقًا.</p>
+                    </div>
+                )}
             </main>
         </div>
     );
 }
+
+    
