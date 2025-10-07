@@ -26,7 +26,7 @@ const services = [
     title: 'العمليات الجراحية',
     description: 'استشارات ما قبل العمليات، نظام حجز متخصص، وعمليات تجميل.',
     href: '/surgery',
-    imgSrc: 'https://picsum.photos/seed/surgery/600/400',
+    imgSrc: 'https://media.istockphoto.com/id/1461681870/photo/team-of-surgeons-looking-at-an-image-in-the-monitor-at-the-operating-room.jpg?s=612x612&w=0&k=20&c=vnlO2ZdPxg4hFWrnOuRaSKrvic8bZUTq8ylHzzgPAnY=',
     imgHint: 'operating room surgery',
   },
   {
