@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
-import { useCollection, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
+import { useState, useRef, useEffect } from 'react';
+import { useFirestore, useStorage } from '@/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { getOffers } from '@/ai/flows/offers-flow';
 
 
 interface Offer {
@@ -53,9 +54,28 @@ export default function OffersPage() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const offersQuery = useMemoFirebase(() => collection(firestore, 'offers'), [firestore]);
-  const { data: offers, isLoading } = useCollection<Omit<Offer, 'id'>>(offersQuery);
+  useEffect(() => {
+    async function fetchOffers() {
+      try {
+        setIsLoading(true);
+        const offersData = await getOffers();
+        setOffers(offersData);
+      } catch (error) {
+        console.error("Failed to fetch offers:", error);
+        toast({
+          variant: "destructive",
+          title: "خطأ في جلب العروض",
+          description: "لم نتمكن من تحميل قائمة العروض. يرجى المحاولة مرة أخرى.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchOffers();
+  }, [toast]);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -86,8 +106,6 @@ export default function OffersPage() {
         const storageRef = ref(storage, `offers/${Date.now()}_${selectedFile.name}`);
         const uploadTask = await uploadBytes(storageRef, selectedFile);
         
-        // This is a simplified progress simulation. For real progress, you need uploadBytesResumable.
-        // For simplicity, we'll just show stages.
         setUploadProgress(50);
         
         imageUrl = await getDownloadURL(uploadTask.ref);
@@ -103,15 +121,17 @@ export default function OffersPage() {
         discount: currentOffer.discount || '',
       };
 
+      let newOfferId = '';
       if (currentOffer.id) {
-        // Update existing offer
         const offerRef = doc(firestore, 'offers', currentOffer.id);
         await updateDoc(offerRef, offerData);
         toast({ title: 'تم التحديث', description: 'تم تحديث العرض بنجاح.' });
+        setOffers(offers.map(o => o.id === currentOffer.id ? { ...o, ...offerData } : o));
       } else {
-        // Add new offer
-        await addDoc(collection(firestore, 'offers'), offerData);
+        const docRef = await addDoc(collection(firestore, 'offers'), offerData);
         toast({ title: 'تمت الإضافة', description: 'تمت إضافة العرض بنجاح.' });
+        newOfferId = docRef.id;
+        setOffers([...offers, { id: newOfferId, ...offerData }]);
       }
       setIsDialogOpen(false);
       setCurrentOffer(null);
@@ -131,6 +151,7 @@ export default function OffersPage() {
     try {
       await deleteDoc(doc(firestore, 'offers', offerId));
       toast({ title: 'تم الحذف', description: 'تم حذف العرض بنجاح.' });
+      setOffers(offers.filter(o => o.id !== offerId));
     } catch (error) {
       console.error("Error deleting offer:", error);
       toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حذف العرض.' });
@@ -198,7 +219,7 @@ export default function OffersPage() {
                     <TableCell>{offer.discount}</TableCell>
                     <TableCell className="flex gap-2">
                         <Button variant="outline" size="icon" onClick={() => openDialog(offer)}><Edit className="h-4 w-4" /></Button>
-                        <Button variant="destructive" size="icon" onClick={() => handleDelete(offer.id)}><Trash2 className="h-4 w-4" /></Button>
+                        <Button variant="destructive" size="icon" onClick={() => handleDelete(offer.id!)}><Trash2 className="h-4 w-4" /></Button>
                     </TableCell>
                     </TableRow>
                 ))
@@ -293,3 +314,5 @@ export default function OffersPage() {
     </div>
   );
 }
+
+    
