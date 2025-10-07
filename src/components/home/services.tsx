@@ -61,8 +61,8 @@ const services = [
     title: 'الرعاية التمريضية المنزلية',
     description: 'حجز جلسات تمريض منزلية، ومتابعة الحالات المزمنة ورعاية ما بعد العمليات.',
     href: '/nursing-care',
-    imgSrc: 'https://picsum.photos/seed/nursing/600/400',
-    imgHint: 'nurse home care',
+    imgSrc: 'https://media.istockphoto.com/id/1719538017/photo/home-care-healthcare-professional-hugging-senior-patient.jpg?s=612x612&w=0&k=20&c=DTQwVD1DTH0CMQ78aox8-cVKg8Nl-wCkSwY-S072M4E=',
+    imgHint: 'nurse senior patient',
   },
   {
     title: 'العلاج الطبيعي',
@@ -114,5 +114,3 @@ export default function Services() {
       </section>
   );
 }
-
-    
