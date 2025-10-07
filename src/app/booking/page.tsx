@@ -3,7 +3,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,12 +13,17 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Calendar } from "@/components/ui/calendar"
 import { Badge } from '@/components/ui/badge';
 import { Loader2, User, Phone, MapPin, Calendar as CalendarIcon, Star } from 'lucide-react';
+import { doc } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useToast } from '@/hooks/use-toast';
 
 const availableTimes = ["09:00 ص", "10:00 ص", "11:00 ص", "01:00 م", "02:00 م", "03:00 م"];
 
 function BookingFlow() {
     const { user, isUserLoading } = useUser();
     const router = useRouter();
+    const firestore = useFirestore();
+    const { toast } = useToast();
     const searchParams = useSearchParams();
     const [doctor, setDoctor] = useState<any>(null);
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -28,6 +33,8 @@ function BookingFlow() {
     const [patientDetails, setPatientDetails] = useState({
         name: '',
         phone: '',
+        address: '',
+        age: '',
     });
 
 
@@ -35,10 +42,11 @@ function BookingFlow() {
         if (!isUserLoading && !user) {
             router.push('/login');
         } else if (user) {
-            setPatientDetails({
+            setPatientDetails(prev => ({
+                ...prev,
                 name: user.displayName || '',
                 phone: user.phoneNumber || '',
-            })
+            }))
         }
     }, [user, isUserLoading, router]);
 
@@ -47,31 +55,59 @@ function BookingFlow() {
         if (doctorData) {
             setDoctor(JSON.parse(decodeURIComponent(doctorData)));
         } else {
-            console.error("No doctor data found in URL.");
+             if (!doctor) {
+                // Prevent infinite redirect loop, only redirect if doctor is not set
+                // router.push('/new-booking');
+            }
         }
-    }, [searchParams]);
+    }, [searchParams, router, doctor]);
 
     const handleConfirmBooking = () => {
         setIsBooking(true);
         
+        if (!user) {
+             toast({
+                variant: "destructive",
+                title: "خطأ",
+                description: "يجب تسجيل الدخول أولاً.",
+            });
+            setIsBooking(false);
+            return;
+        }
+
+        const bookingId = `booking_${Date.now()}`;
         const bookingDetails = {
+            id: bookingId,
             doctorId: doctor.id,
             doctorName: doctor.name,
-            userId: user?.uid,
+            doctorImage: doctor.image,
+            doctorSpecialty: doctor.specialty,
+            userId: user.uid,
             patientName: patientDetails.name,
             patientPhone: patientDetails.phone,
-            appointmentDate: selectedDate?.toLocaleDateString('ar-EG'),
+            patientAddress: patientDetails.address,
+            patientAge: patientDetails.age,
+            appointmentDate: selectedDate?.toISOString(),
             appointmentTime: selectedTime,
             paymentMethod: paymentMethod,
-            bookingId: `booking_${Date.now()}`
+            status: 'confirmed',
         };
 
-        // Here you would typically save the booking to Firestore
-        console.log("Booking Details:", bookingDetails);
-        
+        const bookingRef = doc(firestore, "users", user.uid, "bookings", bookingId);
+        setDocumentNonBlocking(bookingRef, bookingDetails, { merge: true });
+
+        // Simulate API call
         setTimeout(() => {
-            const query = new URLSearchParams(bookingDetails).toString();
-            router.push(`/booking-confirmation?${query}`); 
+            const queryParams = new URLSearchParams({
+                patientName: bookingDetails.patientName,
+                patientPhone: bookingDetails.patientPhone,
+                appointmentDate: selectedDate?.toLocaleDateString('ar-EG') || 'N/A',
+                appointmentTime: bookingDetails.appointmentTime || 'N/A',
+                doctorName: bookingDetails.doctorName,
+                bookingId: bookingDetails.id,
+            }).toString();
+
+            router.push(`/booking-confirmation?${queryParams}`); 
         }, 1000);
     }
 
@@ -111,11 +147,11 @@ function BookingFlow() {
                                 </div>
                                 <div>
                                     <Label htmlFor="address">العنوان</Label>
-                                    <Input id="address" placeholder="المدينة، الحي، الشارع" />
+                                    <Input id="address" value={patientDetails.address} onChange={(e) => setPatientDetails({...patientDetails, address: e.target.value})} placeholder="المدينة، الحي، الشارع" />
                                 </div>
                                 <div>
                                     <Label htmlFor="age">العمر</Label>
-                                    <Input id="age" type="number" placeholder="أدخل عمرك" />
+                                    <Input id="age" type="number" value={patientDetails.age} onChange={(e) => setPatientDetails({...patientDetails, age: e.target.value})} placeholder="أدخل عمرك" />
                                 </div>
                             </div>
                         </CardContent>

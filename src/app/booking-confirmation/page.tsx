@@ -6,8 +6,9 @@ import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, User, Phone, Calendar, Clock, Stethoscope, Home } from 'lucide-react';
+import { CheckCircle, User, Phone, Calendar, Clock, Stethoscope, Home, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 function ConfirmationCard() {
     const searchParams = useSearchParams();
@@ -35,10 +36,19 @@ function ConfirmationCard() {
                 <CardHeader className="text-center bg-green-50 rounded-t-lg pt-6">
                     <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
                     <CardTitle className="text-2xl font-bold text-green-700">تم تأكيد حجزك بنجاح!</CardTitle>
-                    <CardDescription className="text-green-600"> احتفظ بهذه البطاقة لإظهارها عند الوصول.</CardDescription>
+                    <CardDescription className="text-green-600">سيتم عرض تفاصيل حجزك في صفحة "حجوزاتي".</CardDescription>
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="flex flex-col items-center justify-center space-y-6">
+                        
+                        <Alert variant="default" className="bg-amber-50 border-amber-200">
+                          <AlertTriangle className="h-4 w-4 text-amber-600" />
+                          <AlertTitle className="font-bold text-amber-800">تنويه هام</AlertTitle>
+                          <AlertDescription className="text-amber-700">
+                            يرجى الاحتفاظ بصورة من بطاقة الحجز هذه أو الـ QR Code لإظهارها عند الوصول إلى العيادة لتسهيل عملية تأكيد الحضور.
+                          </AlertDescription>
+                        </Alert>
+
                         <div className="p-4 border-2 border-dashed rounded-lg">
                            <Image 
                                 src={qrCodeUrl} 
