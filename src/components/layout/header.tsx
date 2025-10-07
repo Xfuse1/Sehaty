@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { StethoscopeIcon, LogOut, Loader2, Menu, Languages, UserCircle } from 'lucide-react';
+import { LogOut, Loader2, Menu, Languages } from 'lucide-react';
 import { useUser, useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import {
@@ -28,6 +28,17 @@ const navLinks = [
     { href: "/faq", label: "الأسئلة الشائعة" },
     { href: "/contact", label: "تواصل معنا" },
 ];
+
+const Logo = () => (
+    <div className="flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary-foreground">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"></path>
+            <path d="M12 8v8"></path><path d="M8 12h8"></path>
+        </svg>
+        <span className="font-bold text-xl">صحتي</span>
+    </div>
+);
+
 
 export default function Header() {
   const { user, isUserLoading } = useUser();
@@ -106,10 +117,7 @@ export default function Header() {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
             <Link href="/" className="hidden md:flex items-center gap-2">
-                <span className="font-bold text-xl">صحتي</span>
-                <Avatar className="h-9 w-9">
-                  <AvatarFallback className="bg-primary-foreground text-primary"><UserCircle /></AvatarFallback>
-                </Avatar>
+                <Logo />
             </Link>
             <nav className="hidden md:flex items-center gap-4">
                 {navLinks.map(link => (
@@ -130,13 +138,20 @@ export default function Header() {
                   </Button>
               </SheetTrigger>
               <SheetContent side="right">
-                  <nav className="flex flex-col gap-6 text-lg font-medium mt-10">
+                  <Link href="/" className="flex items-center gap-2 mb-8">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"></path><path d="M12 8v8"></path><path d="M8 12h8"></path></svg>
+                     <span className="font-bold text-xl text-foreground">صحتي</span>
+                  </Link>
+                  <nav className="flex flex-col gap-6 text-lg font-medium">
                       {navLinks.map(link => (
                           <Link key={link.href} href={link.href} className="text-muted-foreground hover:text-foreground">{link.label}</Link>
                       ))}
                   </nav>
               </SheetContent>
           </Sheet>
+           <Link href="/" className="flex md:hidden items-center gap-2">
+                <Logo />
+            </Link>
           {userMenu}
         </div>
       </div>

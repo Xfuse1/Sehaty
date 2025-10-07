@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { StethoscopeIcon, Facebook, Twitter, Instagram, Linkedin } from "lucide-react"
+import { Facebook, Twitter, Instagram, Linkedin } from "lucide-react"
 
 export default function Footer() {
   return (
@@ -7,7 +7,7 @@ export default function Footer() {
       <div className="container grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 text-center md:text-right">
         <div className="flex flex-col items-center md:items-start gap-4">
             <Link href="/" className="flex items-center gap-2 mb-2">
-                <StethoscopeIcon className="h-8 w-8 text-primary" />
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"></path><path d="M12 8v8"></path><path d="M8 12h8"></path></svg>
                 <span className="font-bold font-headline text-xl text-foreground">صحتي</span>
             </Link>
             <p className="text-sm text-muted-foreground">
