@@ -1,243 +1,125 @@
-/**
- * @fileoverview Firestore Security Rules for Sehaty Application
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles and their associated bookings.
- * Public read access is granted to service catalogs (pharmacies, physiotherapy packages, nursing care services, lab services, and clinics), while write access is generally restricted.
- * Data consistency is enforced between the path and document data for user-owned resources.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profiles, secured by user ID.
- * - /users/{userId}/bookings/{bookingId}: Stores booking information for a specific user.
- * - /pharmacies/{pharmacyId}: Stores pharmacy information. Publicly readable.
- * - /physiotherapyPackages/{packageId}: Stores physiotherapy packages. Publicly readable.
- * - /nursingCareServices/{nursingCareId}: Stores nursing care service information. Publicly readable.
- * - /labServices/{labServiceId}: Stores lab service information. Publicly readable.
- * - /clinics/{clinicId}: Stores clinic information. Publicly readable.
- * - /clinics/{clinicId}/doctors/{doctorId}: Stores doctor information associated with a clinic. Publicly readable.
- *
- * Key Security Decisions:
- * - Users can only read and write their own user documents and bookings.
- * - Public read access is allowed for service catalogs (pharmacies, physiotherapy packages, nursing care services, lab services, and clinics) to allow listing and viewing service details.
- * - Listing all users is disallowed.
- * - Write access to service catalogs is not explicitly defined and should be managed by backend or administrative functions.
- *
- * Denormalization for Authorization:
- * - Bookings include a userId field, denormalizing the user-booking relationship for easier rule enforcement.
- *
- * Structural Segregation:
- * - User-specific data (bookings) is stored in a user subcollection to simplify ownership-based access control.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents. Users can only read and write their own profile data.
+     * @description Enforces access control for user profiles. Only the authenticated user can read or write their own profile.
      * @path /users/{userId}
-     * @allow (create) User with ID 'user123' can create their own profile.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "id": "user123", "name": "John Doe", "email": "john.doe@example.com" } } }
-     * @allow (get) User with ID 'user123' can read their own profile.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @allow (update) User with ID 'user123' can update their own profile.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "id": "user123", "name": "Updated Name" } } }
-     * @allow (delete) User with ID 'user123' can delete their own profile.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @deny (create) User with ID 'user456' cannot create a profile for 'user123'.
-     *   Request: { "auth": { "uid": "user456" }, "resource": { "data": { "id": "user123", "name": "John Doe" } } }
-     * @deny (get) User with ID 'user456' cannot read the profile of 'user123'.
-     *   Request: { "auth": { "uid": "user456" } }
-     * @deny (update) User with ID 'user456' cannot update the profile of 'user123'.
-     *   Request: { "auth": { "uid": "user456" }, "resource": { "data": { "id": "user123", "name": "Updated Name" } } }
-     * @deny (delete) User with ID 'user456' cannot delete the profile of 'user123'.
-     *   Request: { "auth": { "uid": "user456" } }
-     * @principle Enforces document ownership for writes, restricts read access to owner only.
+     * @allow (create) User with ID 'user123' can create their profile if authenticated as 'user123'.
+     * @allow (get, update, delete) User with ID 'user123' can get, update, or delete their profile if authenticated as 'user123'.
+     * @deny (create, get, update, delete) User with ID 'user456' cannot access the profile of 'user123', even if authenticated.
+     * @principle Enforces document ownership for reads and writes.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false; // Listing users is not allowed.
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Controls access to booking documents within a user's subcollection. Users can only read and write their own bookings.
-     * @path /users/{userId}/bookings/{bookingId}
-     * @allow (create) User with ID 'user123' can create a booking under their profile.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "userId": "user123", "serviceType": "physiotherapy", "serviceId": "package456" } } }
-     * @allow (get) User with ID 'user123' can read a booking under their profile.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @allow (update) User with ID 'user123' can update a booking under their profile.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "userId": "user123", "status": "confirmed" } } }
-     * @allow (delete) User with ID 'user123' can delete a booking under their profile.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @deny (create) User with ID 'user456' cannot create a booking under 'user123's profile.
-     *   Request: { "auth": { "uid": "user456" }, "resource": { "data": { "userId": "user123", "serviceType": "physiotherapy", "serviceId": "package456" } } }
-     * @deny (get) User with ID 'user456' cannot read a booking under 'user123's profile.
-     *   Request: { "auth": { "uid": "user456" } }
-     * @deny (update) User with ID 'user456' cannot update a booking under 'user123's profile.
-     *   Request: { "auth": { "uid": "user456" }, "resource": { "data": { "userId": "user123", "status": "confirmed" } } }
-     * @deny (delete) User with ID 'user456' cannot delete a booking under 'user123's profile.
-     *   Request: { "auth": { "uid": "user456" } }
-     * @principle Enforces document ownership for writes, restricts read access to owner only, validates userId on create.
-     */
-    match /users/{userId}/bookings/{bookingId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && resource.data.userId == userId;
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Allows public read access to pharmacy documents.
+     * @description Allows public read access to pharmacy information. Write access is denied.
      * @path /pharmacies/{pharmacyId}
-     * @allow (get) Any user can retrieve pharmacy information.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @allow (list) Any user can list pharmacies.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @deny (create) No one can create a new pharmacy document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "name": "New Pharmacy", "whatsappNumber": "123-456-7890" } } }
-     * @deny (update) No one can update a pharmacy document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "name": "Updated Pharmacy Name" } } }
-     * @deny (delete) No one can delete a pharmacy document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @principle Allows public reads, restricts writes.
+     * @allow (get, list) Any user can read pharmacy information.
+     * @deny (create, update, delete) No user can create, update, or delete pharmacy information through client-side rules.
+     * @principle Provides public read access while restricting write access to prevent unauthorized modifications.
      */
     match /pharmacies/{pharmacyId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Allows public read access to physiotherapy package documents.
+     * @description Allows public read access to physiotherapy package information. Write access is denied.
      * @path /physiotherapyPackages/{packageId}
-     * @allow (get) Any user can retrieve physiotherapy package information.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @allow (list) Any user can list physiotherapy packages.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @deny (create) No one can create a new physiotherapy package document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "name": "New Package", "price": 99.99 } } }
-     * @deny (update) No one can update a physiotherapy package document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "price": 129.99 } } }
-     * @deny (delete) No one can delete a physiotherapy package document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @principle Allows public reads, restricts writes.
+     * @allow (get, list) Any user can read physiotherapy package information.
+     * @deny (create, update, delete) No user can create, update, or delete physiotherapy package information through client-side rules.
+     * @principle Provides public read access while restricting write access to prevent unauthorized modifications.
      */
     match /physiotherapyPackages/{packageId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Allows public read access to nursing care service documents.
+     * @description Allows public read access to nursing care service information. Write access is denied.
      * @path /nursingCareServices/{nursingCareId}
-     * @allow (get) Any user can retrieve nursing care service information.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @allow (list) Any user can list nursing care services.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @deny (create) No one can create a new nursing care service document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "name": "New Nursing Care", "price": 149.99 } } }
-     * @deny (update) No one can update a nursing care service document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "price": 179.99 } } }
-     * @deny (delete) No one can delete a nursing care service document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @principle Allows public reads, restricts writes.
+     * @allow (get, list) Any user can read nursing care service information.
+     * @deny (create, update, delete) No user can create, update, or delete nursing care service information through client-side rules.
+     * @principle Provides public read access while restricting write access to prevent unauthorized modifications.
      */
     match /nursingCareServices/{nursingCareId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Allows public read access to lab service documents.
+     * @description Allows public read access to lab service information. Write access is denied.
      * @path /labServices/{labServiceId}
-     * @allow (get) Any user can retrieve lab service information.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @allow (list) Any user can list lab services.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @deny (create) No one can create a new lab service document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "name": "New Lab Service", "price": 79.99 } } }
-     * @deny (update) No one can update a lab service document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "price": 89.99 } } }
-     * @deny (delete) No one can delete a lab service document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @principle Allows public reads, restricts writes.
+     * @allow (get, list) Any user can read lab service information.
+     * @deny (create, update, delete) No user can create, update, or delete lab service information through client-side rules.
+     * @principle Provides public read access while restricting write access to prevent unauthorized modifications.
      */
     match /labServices/{labServiceId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Allows public read access to clinic documents.
+     * @description Allows public read access to clinic information. Write access is denied.
      * @path /clinics/{clinicId}
-     * @allow (get) Any user can retrieve clinic information.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @allow (list) Any user can list clinics.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @deny (create) No one can create a new clinic document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "name": "New Clinic", "address": "123 Main St" } } }
-     * @deny (update) No one can update a clinic document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "address": "456 Oak Ave" } } }
-     * @deny (delete) No one can delete a clinic document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @principle Allows public reads, restricts writes.
+     * @allow (get, list) Any user can read clinic information.
+     * @deny (create, update, delete) No user can create, update, or delete clinic information through client-side rules.
+     * @principle Provides public read access while restricting write access to prevent unauthorized modifications.
      */
     match /clinics/{clinicId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Allows public read access to doctor documents within a clinic's subcollection.
+     * @description Enforces access control for doctors associated with a clinic.  Write access is denied.
      * @path /clinics/{clinicId}/doctors/{doctorId}
-     * @allow (get) Any user can retrieve doctor information associated with a clinic.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @allow (list) Any user can list doctors associated with a clinic.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @deny (create) No one can create a new doctor document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "name": "New Doctor", "speciality": "Cardiology" } } }
-     * @deny (update) No one can update a doctor document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "speciality": "Oncology" } } }
-     * @deny (delete) No one can delete a doctor document through client-side rules.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @principle Allows public reads, restricts writes.
+     * @allow (get, list) Any user can read doctor information associated with a specific clinic.
+     * @deny (create, update, delete) No user can create, update, or delete doctor information through client-side rules.
+     * @principle Provides public read access while restricting write access to prevent unauthorized modifications.
      */
     match /clinics/{clinicId}/doctors/{doctorId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
+    /**
+     * @description Enforces access control for bookings under a specific user. Only the authenticated user can read or write their own bookings.
+     * @path /users/{userId}/bookings/{bookingId}
+     * @allow (create) User with ID 'user123' can create a booking under their user ID if authenticated as 'user123'.
+     * @allow (get, update, delete) User with ID 'user123' can get, update, or delete their booking if authenticated as 'user123'.
+     * @deny (create, get, update, delete) User with ID 'user456' cannot access the bookings of 'user123', even if authenticated.
+     * @principle Enforces document ownership for reads and writes of booking data.
+     */
+    match /users/{userId}/bookings/{bookingId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
 
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
   }
 }
