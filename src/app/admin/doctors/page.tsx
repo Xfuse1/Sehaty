@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useFirestore, useStorage } from '@/firebase';
+import { useFirestore, useStorage, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
@@ -130,13 +130,13 @@ export default function DoctorsPage() {
 
       if (currentDoctor.id) {
         const docRef = doc(firestore, 'doctors', currentDoctor.id);
-        await updateDoc(docRef, doctorData);
+        updateDocumentNonBlocking(docRef, doctorData);
         toast({ title: 'تم التحديث', description: 'تم تحديث بيانات الطبيب بنجاح.' });
         setDoctors(doctors.map(d => d.id === currentDoctor.id ? { id: d.id, ...doctorData } : d));
       } else {
-        const docRef = await addDoc(collection(firestore, 'doctors'), doctorData);
+        const newDocRef = await addDoc(collection(firestore, 'doctors'), doctorData);
         toast({ title: 'تمت الإضافة', description: 'تمت إضافة الطبيب بنجاح.' });
-        setDoctors([...doctors, { id: docRef.id, ...doctorData }]);
+        setDoctors([...doctors, { id: newDocRef.id, ...doctorData }]);
       }
       setIsDialogOpen(false);
       setCurrentDoctor(null);
