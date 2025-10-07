@@ -1,15 +1,17 @@
 
 "use client";
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
-import { Camera, Bot, Upload, Droplet, TestTube, Heart, Sun } from "lucide-react";
+import { Camera, Bot, Upload, Droplet, TestTube, Heart, Sun, FileDown, BookOpen, User, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
+import { useUser } from '@/firebase';
 
 const commonTests = [
   {
@@ -34,10 +36,32 @@ const commonTests = [
   },
 ];
 
+const mockResults = [
+    { id: 1, name: "صورة دم كاملة (CBC)", date: "2024-05-15", url: "#" },
+    { id: 2, name: "تحليل فيتامين د (Vitamin D)", date: "2024-03-22", url: "#" },
+    { id: 3, name: "ملف الدهون (Lipid Profile)", date: "2024-03-22", url: "#" },
+];
+
+const faqItems = [
+    {
+        question: "ماذا تعني رموز H و L بجانب النتائج؟",
+        answer: "يرمز 'H' إلى 'High' (مرتفع)، ويعني أن النتيجة أعلى من المعدل الطبيعي. بينما يرمز 'L' إلى 'Low' (منخفض)، ويعني أن النتيجة أقل من المعدل الطبيعي. كلاهما قد يستدعي استشارة الطبيب."
+    },
+    {
+        question: "ما هو 'النطاق المرجعي' أو 'Reference Range'؟",
+        answer: "هو نطاق القيم الذي يعتبر طبيعيًا وصحيًا لمعظم الناس. إذا كانت نتيجتك تقع ضمن هذا النطاق، فهي غالبًا ما تكون طبيعية. ومع ذلك، يجب دائمًا مناقشة النتائج مع طبيبك."
+    },
+    {
+        question: "هل أحتاج إلى الصيام قبل إجراء التحاليل؟",
+        answer: "بعض التحاليل، مثل تحليل السكر وملف الدهون، تتطلب الصيام لمدة 8-12 ساعة للحصول على نتائج دقيقة. سيقوم المختبر دائمًا بإعلامك إذا كان الصيام ضروريًا للتحليل الذي تطلبه."
+    }
+];
+
 export default function LabServicesPage() {
   const whatsappLink = "https://wa.me/201211886649";
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, isUserLoading } = useUser();
 
   const handlePrescriptionRequest = () => {
     const message = `أرغب في الاستفسار عن تحليل طبي من خلال روشتة مرفقة.`;
@@ -135,7 +159,67 @@ export default function LabServicesPage() {
               ))}
             </div>
         </section>
+        
+        {isUserLoading ? (
+            <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+        ) : user ? (
+            <section>
+                <div className="text-center mb-12">
+                    <h2 className="text-3xl font-bold text-foreground">نتائجي السابقة</h2>
+                    <p className="text-muted-foreground mt-2">يمكنك عرض وتحميل نتائج تحاليلك السابقة من هنا.</p>
+                </div>
+                <div className="max-w-3xl mx-auto space-y-4">
+                    {mockResults.map(result => (
+                        <Card key={result.id} className="flex items-center justify-between p-4">
+                            <div>
+                                <p className="font-semibold">{result.name}</p>
+                                <p className="text-sm text-muted-foreground">تاريخ: {result.date}</p>
+                            </div>
+                            <Button variant="outline" size="icon" onClick={() => toast({ title: "جاري تحميل الملف..." })}>
+                                <FileDown className="h-5 w-5" />
+                                <span className="sr-only">Download PDF</span>
+                            </Button>
+                        </Card>
+                    ))}
+                </div>
+            </section>
+        ) : (
+             <Card className="max-w-3xl mx-auto text-center p-8 bg-gray-50">
+                 <User className="h-12 w-12 mx-auto text-muted-foreground mb-4"/>
+                 <CardTitle>سجل الدخول لعرض نتائجك</CardTitle>
+                 <CardDescription className="mt-2">قم بتسجيل الدخول إلى حسابك لعرض سجل نتائج التحاليل الخاصة بك وتنزيلها.</CardDescription>
+                 <Button asChild className="mt-6">
+                     <Link href="/login">تسجيل الدخول</Link>
+                 </Button>
+             </Card>
+        )}
+
+        <section>
+            <div className="text-center mb-12">
+                 <BookOpen className="h-12 w-12 mx-auto text-primary mb-4"/>
+                 <h2 className="text-3xl font-bold text-foreground">دليلك لقراءة التحاليل</h2>
+                 <p className="text-muted-foreground mt-2">معلومات لمساعدتك على فهم نتائج تحاليلك بشكل أفضل.</p>
+            </div>
+            <div className="max-w-3xl mx-auto">
+              <Accordion type="single" collapsible className="w-full">
+                {faqItems.map((item, index) => (
+                  <AccordionItem value={`item-${index}`} key={index}>
+                    <AccordionTrigger className="text-lg font-semibold text-right hover:no-underline">
+                      {item.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-muted-foreground leading-relaxed">
+                      {item.answer}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
+        </section>
+
       </main>
     </div>
   );
 }
+
+
+    
