@@ -32,7 +32,7 @@ const services = [
   {
     title: 'دليل الأطباء',
     description: 'دليل أرقام وعناوين جميع الأطباء، بما في ذلك عدد كبير غير متعاقدين معنا.',
-    href: '/specialized-clinics',
+    href: '/doctors-directory',
     imgSrc: 'https://picsum.photos/seed/booking/600/400',
     imgHint: 'online booking calendar',
   },
