@@ -1,125 +1,240 @@
+/**
+ * @fileoverview Firestore Security Rules for the Sehaty application.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for user-specific data
+ * (e.g., bookings under /users/{userId}) and allows public read access to
+ * shared resources like pharmacies and services. A top-level /bookings collection
+ * is intended for admin access and would require separate role-based rules if implemented.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profiles.
+ * - /users/{userId}/bookings/{bookingId}: Stores booking information for a specific user.
+ * - /pharmacies/{pharmacyId}: Stores pharmacy information.
+ * - /physiotherapyPackages/{packageId}: Stores physiotherapy packages.
+ * - /nursingCareServices/{nursingCareId}: Stores nursing care service information.
+ * - /labServices/{labServiceId}: Stores lab service information.
+ * - /clinics/{clinicId}: Stores clinic information.
+ * - /clinics/{clinicId}/doctors/{doctorId}: Stores doctor information associated with a clinic.
+ * - /offers/{offerId}: Stores pharmacy offers.
+ * - /bookings/{bookingId}: A global collection of all bookings for admin oversight.
+ *
+ * Key Security Decisions:
+ * - User listing is disabled.
+ * - Public read access is granted to /pharmacies, /physiotherapyPackages, /nursingCareServices, /labServices, /clinics, and /offers.
+ * - Strict ownership is enforced for data under /users/{userId}.
+ * - No schema validation is performed beyond authorization-critical fields.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Enforces access control for user profiles. Only the authenticated user can read or write their own profile.
-     * @path /users/{userId}
-     * @allow (create) User with ID 'user123' can create their profile if authenticated as 'user123'.
-     * @allow (get, update, delete) User with ID 'user123' can get, update, or delete their profile if authenticated as 'user123'.
-     * @deny (create, get, update, delete) User with ID 'user456' cannot access the profile of 'user123', even if authenticated.
-     * @principle Enforces document ownership for reads and writes.
+     * @description Checks if the current user is signed in.
+     * @param {string} userId - The user's ID.
+     * @return {boolean} True if the user is signed in, false otherwise.
      */
-    match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false; // Listing users is not allowed.
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
+    function isSignedIn() {
+      return request.auth != null;
     }
 
     /**
-     * @description Allows public read access to pharmacy information. Write access is denied.
+     * @description Checks if the current user is the owner of the resource.
+     * @param {string} userId - The user's ID.
+     * @return {boolean} True if the user is the owner, false otherwise.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the current user is the owner of the resource and it exists.
+     * @param {string} userId - The user's ID.
+     * @return {boolean} True if the user is the owner and the resource exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rules for the /users/{userId} collection.
+     * @path /users/{userId}
+     * @allow (create) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can create their own user document.
+     * @deny (create) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot create a document with a different userId.
+     * @allow (get) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can get their own user document.
+     * @deny (get) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot get another user's document.
+     * @deny (list) No one can list the /users collection.
+     * @allow (update) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can update their own user document.
+     * @deny (update) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot update another user's document.
+     * @allow (delete) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can delete their own user document.
+     * @deny (delete) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot delete another user's document.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /pharmacies/{pharmacyId} collection.
      * @path /pharmacies/{pharmacyId}
-     * @allow (get, list) Any user can read pharmacy information.
-     * @deny (create, update, delete) No user can create, update, or delete pharmacy information through client-side rules.
-     * @principle Provides public read access while restricting write access to prevent unauthorized modifications.
+     * @allow (get) Any user can read pharmacy information.
+     * @allow (list) Any user can list pharmacies.
+     * @deny (create) No user can create pharmacies.
+     * @deny (update) No user can update pharmacies.
+     * @deny (delete) No user can delete pharmacies.
+     * @principle Public read, owner-only writes (not yet implemented).
      */
     match /pharmacies/{pharmacyId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows public read access to physiotherapy package information. Write access is denied.
+     * @description Rules for the /physiotherapyPackages/{packageId} collection.
      * @path /physiotherapyPackages/{packageId}
-     * @allow (get, list) Any user can read physiotherapy package information.
-     * @deny (create, update, delete) No user can create, update, or delete physiotherapy package information through client-side rules.
-     * @principle Provides public read access while restricting write access to prevent unauthorized modifications.
+     * @allow (get) Any user can read physiotherapy package information.
+     * @allow (list) Any user can list physiotherapy packages.
+     * @deny (create) No user can create physiotherapy packages.
+     * @deny (update) No user can update physiotherapy packages.
+     * @deny (delete) No user can delete physiotherapy packages.
+     * @principle Public read, owner-only writes (not yet implemented).
      */
     match /physiotherapyPackages/{packageId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows public read access to nursing care service information. Write access is denied.
+     * @description Rules for the /users/{userId}/bookings/{bookingId} collection.
+     * @path /users/{userId}/bookings/{bookingId}
+     * @allow (create) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can create a booking under their user ID.
+     * @deny (create) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot create a booking under a different user ID.
+     * @allow (get) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can get their own booking.
+     * @deny (get) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot get another user's booking.
+     * @allow (list) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can list their own bookings.
+     * @deny (list) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot list another user's bookings.
+     * @allow (update) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can update their own booking.
+     * @deny (update) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot update another user's booking.
+     * @allow (delete) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can delete their own booking.
+     * @deny (delete) User 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot delete another user's booking.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/bookings/{bookingId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == userId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /nursingCareServices/{nursingCareId} collection.
      * @path /nursingCareServices/{nursingCareId}
-     * @allow (get, list) Any user can read nursing care service information.
-     * @deny (create, update, delete) No user can create, update, or delete nursing care service information through client-side rules.
-     * @principle Provides public read access while restricting write access to prevent unauthorized modifications.
+     * @allow (get) Any user can read nursing care service information.
+     * @allow (list) Any user can list nursing care services.
+     * @deny (create) No user can create nursing care services.
+     * @deny (update) No user can update nursing care services.
+     * @deny (delete) No user can delete nursing care services.
+     * @principle Public read, owner-only writes (not yet implemented).
      */
     match /nursingCareServices/{nursingCareId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows public read access to lab service information. Write access is denied.
+     * @description Rules for the /labServices/{labServiceId} collection.
      * @path /labServices/{labServiceId}
-     * @allow (get, list) Any user can read lab service information.
-     * @deny (create, update, delete) No user can create, update, or delete lab service information through client-side rules.
-     * @principle Provides public read access while restricting write access to prevent unauthorized modifications.
+     * @allow (get) Any user can read lab service information.
+     * @allow (list) Any user can list lab services.
+     * @deny (create) No user can create lab services.
+     * @deny (update) No user can update lab services.
+     * @deny (delete) No user can delete lab services.
+     * @principle Public read, owner-only writes (not yet implemented).
      */
     match /labServices/{labServiceId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows public read access to clinic information. Write access is denied.
+     * @description Rules for the /clinics/{clinicId} collection.
      * @path /clinics/{clinicId}
-     * @allow (get, list) Any user can read clinic information.
-     * @deny (create, update, delete) No user can create, update, or delete clinic information through client-side rules.
-     * @principle Provides public read access while restricting write access to prevent unauthorized modifications.
+     * @allow (get) Any user can read clinic information.
+     * @allow (list) Any user can list clinics.
+     * @deny (create) No user can create clinics.
+     * @deny (update) No user can update clinics.
+     * @deny (delete) No user can delete clinics.
+     * @principle Public read, owner-only writes (not yet implemented).
      */
     match /clinics/{clinicId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Enforces access control for doctors associated with a clinic.  Write access is denied.
+     * @description Rules for the /clinics/{clinicId}/doctors/{doctorId} collection.
      * @path /clinics/{clinicId}/doctors/{doctorId}
-     * @allow (get, list) Any user can read doctor information associated with a specific clinic.
-     * @deny (create, update, delete) No user can create, update, or delete doctor information through client-side rules.
-     * @principle Provides public read access while restricting write access to prevent unauthorized modifications.
+     * @allow (get) Any user can read doctor information.
+     * @allow (list) Any user can list doctors.
+     * @deny (create) No user can create doctors.
+     * @deny (update) No user can update doctors.
+     * @deny (delete) No user can delete doctors.
+     * @principle Public read, owner-only writes (not yet implemented).
      */
     match /clinics/{clinicId}/doctors/{doctorId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+    
+     /**
+     * @description Rules for the /bookings/{bookingId} collection.  This is intended for admin access.
+     * @path /bookings/{bookingId}
+     * @allow (get) Any user can read booking information.
+     * @allow (list) Any user can list bookings.
+     * @deny (create) No user can create bookings.
+     * @deny (update) No user can update bookings.
+     * @deny (delete) No user can delete bookings.
+     * @principle Public read, owner-only writes (not yet implemented).
+     */
+    match /bookings/{bookingId} {
+      allow get, list: if true; // TODO: Restrict to admin role.
+      allow create: if false; // TODO: Restrict to admin role.
+      allow update: if false; // TODO: Restrict to admin role.
+      allow delete: if false; // TODO: Restrict to admin role.
     }
 
     /**
-     * @description Enforces access control for bookings under a specific user. Only the authenticated user can read or write their own bookings.
-     * @path /users/{userId}/bookings/{bookingId}
-     * @allow (create) User with ID 'user123' can create a booking under their user ID if authenticated as 'user123'.
-     * @allow (get, update, delete) User with ID 'user123' can get, update, or delete their booking if authenticated as 'user123'.
-     * @deny (create, get, update, delete) User with ID 'user456' cannot access the bookings of 'user123', even if authenticated.
-     * @principle Enforces document ownership for reads and writes of booking data.
+     * @description Rules for the /offers/{offerId} collection.
+     * @path /offers/{offerId}
+     * @allow (get) Any user can read offer information.
+     * @allow (list) Any user can list offers.
+     * @deny (create) No user can create offers.
+     * @deny (update) No user can update offers.
+     * @deny (delete) No user can delete offers.
+     * @principle Public read, owner-only writes (not yet implemented).
      */
-    match /users/{userId}/bookings/{bookingId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
+    match /offers/{offerId} {
+      allow get, list: if true;
+      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
   }
 }
