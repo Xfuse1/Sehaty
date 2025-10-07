@@ -14,7 +14,7 @@ const services = [
         icon: <Stethoscope className="h-10 w-10 text-primary" />,
         title: 'العيادات المتخصصة',
         description: 'احجز موعدًا مع أحد أطبائنا الخبراء في مختلف التخصصات.',
-        href: '#',
+        href: '/specialized-clinics',
         imgSrc: 'https://picsum.photos/seed/clinics/600/400',
         imgHint: 'specialized clinic interior',
       },
