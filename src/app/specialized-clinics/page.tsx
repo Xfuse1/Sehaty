@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Heart, Brain, Bone, Eye, Baby, Stethoscope, Scissors, Dna, Tooth, Ear, Activity, Star, MapPin, Clock, Tag, Smile } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
+import { Search, Heart, Brain, Bone, Eye, Baby, Stethoscope, Scissors, Dna, Ear, Activity, Star, MapPin, Clock, Smile, X } from "lucide-react";
 import Image from "next/image";
 
 const specialties = [
@@ -36,7 +37,8 @@ const doctorsData = [
         nextAppointment: "اليوم 03:00 م",
         price: 250,
         image: "https://picsum.photos/seed/doctor1/200/200",
-        tags: ["استشاري أطفال", "دكتوراه"]
+        tags: ["استشاري أطفال", "دكتوراه"],
+        bio: "دكتورة فاطمة هي استشارية طب أطفال بخبرة تمتد لأكثر من 15 عامًا في رعاية الأطفال وحديثي الولادة. حاصلة على دكتوراه في طب الأطفال وتشتهر بتعاملها الممتاز مع الصغار."
     },
     {
         name: "د. أحمد محمد السعيد",
@@ -49,7 +51,8 @@ const doctorsData = [
         nextAppointment: "غداً 10:00 ص",
         price: 300,
         image: "https://picsum.photos/seed/doctor2/200/200",
-        tags: ["استشاري قلب", "زمالة أمريكية"]
+        tags: ["استشاري قلب", "زمالة أمريكية"],
+        bio: "الدكتور أحمد السعيد استشاري مرموق في طب القلب، يتمتع بخبرة 20 عامًا وحاصل على الزمالة الأمريكية. متخصص في علاج أمراض الشرايين التاجية والقسطرة القلبية."
     },
     {
         name: "د. سارة خالد المطيري",
@@ -62,7 +65,8 @@ const doctorsData = [
         nextAppointment: "اليوم 05:00 م",
         price: 280,
         image: "https://picsum.photos/seed/doctor3/200/200",
-        tags: ["استشارية جلدية", "متوفر كشف"]
+        tags: ["استشارية جلدية", "متوفر كشف"],
+        bio: "الدكتورة سارة المطيري استشارية أمراض جلدية وتجميل، معروفة بمهاراتها العالية في الإجراءات التجميلية مثل الفيلر والبوتوكس وعلاج مشاكل البشرة المختلفة."
     },
     {
         name: "د. محمود حسن العمري",
@@ -75,7 +79,8 @@ const doctorsData = [
         nextAppointment: "بعد غد 11:00 ص",
         price: 350,
         image: "https://picsum.photos/seed/doctor4/200/200",
-        tags: ["استشاري عظام", "زمالة كندية"]
+        tags: ["استشاري عظام", "زمالة كندية"],
+        bio: "الدكتور محمود العمري استشاري جراحة العظام الحاصل على الزمالة الكندية. متخصص في جراحات تغيير المفاصل والإصابات الرياضية."
     },
      {
         name: "د. علي عبدالله",
@@ -88,7 +93,8 @@ const doctorsData = [
         nextAppointment: "اليوم 04:30 م",
         price: 200,
         image: "https://picsum.photos/seed/doctor5/200/200",
-        tags: ["أخصائي تقويم", "تجميل أسنان"]
+        tags: ["أخصائي تقويم", "تجميل أسنان"],
+        bio: "الدكتور علي أخصائي تقويم وتجميل أسنان بخبرة 10 سنوات. يقدم حلولاً متكاملة للحصول على ابتسامة مثالية باستخدام أحدث التقنيات."
     },
     {
         name: "د. نورة سالم",
@@ -101,20 +107,26 @@ const doctorsData = [
         nextAppointment: "غداً 09:00 ص",
         price: 320,
         image: "https://picsum.photos/seed/doctor6/200/200",
-        tags: ["استشاري عيون", "جراحة ليزك"]
+        tags: ["استشاري عيون", "جراحة ليزك"],
+        bio: "الدكتورة نورة استشارية طب وجراحة العيون، متخصصة في عمليات تصحيح النظر بالليزك وعلاج أمراض القرنية والماء الأبيض."
     }
 ];
+
+type Doctor = typeof doctorsData[0];
 
 
 export default function ClinicsPage() {
     const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('highest-rated');
+    const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
 
     const filteredDoctors = doctorsData
         .filter(doctor => 
             (selectedSpecialty ? doctor.specialtyKey === selectedSpecialty : true) &&
-            (doctor.name.includes(searchTerm) || doctor.specialty.includes(searchTerm) || doctor.location.includes(searchTerm))
+            (doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+             doctor.specialty.toLowerCase().includes(searchTerm.toLowerCase()) || 
+             doctor.location.toLowerCase().includes(searchTerm.toLowerCase()))
         )
         .sort((a, b) => {
             if (sortBy === 'highest-rated') {
@@ -234,7 +246,7 @@ export default function ClinicsPage() {
                                      </div>
                                      <div className="w-full flex flex-col gap-2">
                                         <Button className="w-full">احجز موعد</Button>
-                                        <Button variant="outline" className="w-full">عرض الملف</Button>
+                                        <Button variant="outline" className="w-full" onClick={() => setSelectedDoctor(doc)}>عرض الملف</Button>
                                      </div>
                                 </div>
                             </Card>
@@ -242,7 +254,45 @@ export default function ClinicsPage() {
                     </div>
                 </section>
             </main>
+            
+            <Dialog open={!!selectedDoctor} onOpenChange={(isOpen) => !isOpen && setSelectedDoctor(null)}>
+                <DialogContent className="sm:max-w-[425px]">
+                     {selectedDoctor && (
+                        <>
+                            <DialogHeader>
+                                <DialogTitle className="text-2xl text-primary">{selectedDoctor.name}</DialogTitle>
+                                <DialogDescription>
+                                    {selectedDoctor.specialty}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4 space-y-4">
+                                <p className="text-muted-foreground leading-relaxed">{selectedDoctor.bio}</p>
+                                <div className="flex items-center justify-between text-sm border-t pt-4">
+                                    <span className="text-muted-foreground">التقييم:</span>
+                                    <div className="flex items-center gap-1 text-amber-500">
+                                        <Star className="w-4 h-4 fill-current" />
+                                        <span className="font-bold">{selectedDoctor.rating}</span>
+                                        <span className="text-xs">({selectedDoctor.reviews} مراجعة)</span>
+                                    </div>
+                                </div>
+                                 <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">سنوات الخبرة:</span>
+                                    <span className="font-bold">{selectedDoctor.experience} سنة</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">رسوم الكشف:</span>
+                                    <span className="font-bold text-primary">{selectedDoctor.price} ر.س</span>
+                                </div>
+                            </div>
+                             <DialogClose asChild>
+                                <Button type="button" variant="secondary" className="mt-4 w-full">
+                                    إغلاق
+                                </Button>
+                            </DialogClose>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
-
