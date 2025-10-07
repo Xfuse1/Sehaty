@@ -15,7 +15,7 @@ export default function Header() {
             <Link href="#">تسجيل الدخول</Link>
           </Button>
           <Button asChild>
-            <Link href="#">إنشاء حساب</Link>
+            <Link href="/signup">إنشاء حساب</Link>
           </Button>
         </div>
       </div>
