@@ -9,7 +9,7 @@ import {
   Beaker,
   Building,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 const services = [
@@ -66,29 +66,29 @@ const services = [
 
 export default function Services() {
   return (
-    <section id="services" className="w-full py-16 md:py-24">
+    <section id="services" className="w-full py-16 md:py-24 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold font-headline">خدماتنا الصحية المتكاملة</h2>
-            <p className="text-lg text-muted-foreground mt-4 max-w-2xl mx-auto">
+            <h2 className="text-4xl md:text-5xl font-bold font-headline text-primary">خدماتنا الصحية المتكاملة</h2>
+            <p className="text-lg text-muted-foreground mt-4 max-w-3xl mx-auto">
               نوفر لك كل ما تحتاجه من رعاية صحية في مكان واحد، بسهولة وأمان.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {services.map((service) => (
               <Link href={service.href} key={service.title} className="group block">
-                <Card className="h-full text-center bg-card hover:shadow-primary/10 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 hover:border-primary/30">
+                <Card className="h-full text-center bg-card hover:shadow-xl hover:border-primary/20 rounded-xl transition-all duration-300 transform hover:-translate-y-2">
                   <CardHeader className="items-center pt-8">
-                    <div className="bg-primary/10 p-4 rounded-full transition-colors duration-300 group-hover:bg-primary/20">
+                    <div className="bg-primary/10 p-5 rounded-full transition-colors duration-300 group-hover:bg-primary/20">
                       {service.icon}
                     </div>
                   </CardHeader>
-                  <CardContent className="flex flex-col gap-4 pb-8 px-4">
-                    <CardTitle className="font-headline text-xl">{service.title}</CardTitle>
-                    <CardDescription className="flex-grow min-h-[40px]">{service.description}</CardDescription>
+                  <CardContent className="flex flex-col gap-2 pb-8 px-6">
+                    <CardTitle className="font-headline text-xl text-foreground">{service.title}</CardTitle>
+                    <p className="text-muted-foreground flex-grow min-h-[40px]">{service.description}</p>
                     {service.badge && (
                       <div className="pt-2">
-                         <Badge variant="outline" className="border-accent text-accent">{service.badge}</Badge>
+                         <Badge variant="secondary" className="border-accent text-accent-foreground bg-accent/90">{service.badge}</Badge>
                       </div>
                     )}
                   </CardContent>

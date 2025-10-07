@@ -25,7 +25,7 @@ export default function Header() {
   };
 
   const getInitials = (name: string | null | undefined) => {
-    if (!name) return '';
+    if (!name) return 'U';
     const names = name.split(' ');
     if (names.length > 1) {
       return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
@@ -35,21 +35,21 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center">
+      <div className="container flex h-20 items-center">
         <Link href="/" className="mr-auto flex items-center gap-2">
-          <StethoscopeIcon className="h-6 w-6 text-primary" />
-          <span className="font-bold font-headline text-lg">صحتي</span>
+          <StethoscopeIcon className="h-8 w-8 text-primary" />
+          <span className="font-bold font-headline text-2xl text-foreground">صحتي</span>
         </Link>
         <div className="flex items-center gap-2">
           {isUserLoading ? (
-             <Loader2 className="h-6 w-6 animate-spin" />
+             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           ) : user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                  <Avatar className="h-10 w-10 border-2 border-primary/50">
                     <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || ''} />
-                    <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+                    <AvatarFallback className="bg-primary/20 text-primary font-bold">{getInitials(user.displayName)}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -63,7 +63,7 @@ export default function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50">
                   <LogOut className="ml-2 h-4 w-4" />
                   <span>تسجيل الخروج</span>
                 </DropdownMenuItem>
@@ -74,7 +74,7 @@ export default function Header() {
               <Button asChild variant="ghost">
                 <Link href="/login">تسجيل الدخول</Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="rounded-full">
                 <Link href="/signup">إنشاء حساب</Link>
               </Button>
             </>
