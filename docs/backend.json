@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -267,6 +268,47 @@
         "id",
         "name"
       ]
+    },
+    "Offer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Offer",
+      "type": "object",
+      "description": "Represents a pharmacy offer displayed in the app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Offer entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the product on offer."
+        },
+        "oldPrice": {
+          "type": "string",
+          "description": "The original price of the product."
+        },
+        "newPrice": {
+          "type": "string",
+          "description": "The discounted price of the product."
+        },
+        "imgSrc": {
+          "type": "string",
+          "description": "URL for the product image."
+        },
+        "imgHint": {
+          "type": "string",
+          "description": "A hint for AI to find a relevant image."
+        },
+        "discount": {
+          "type": "string",
+          "description": "The discount percentage or amount (e.g., '20%')."
+        }
+      },
+      "required": [
+        "name",
+        "newPrice",
+        "imgSrc"
+      ]
     }
   },
   "auth": {
@@ -428,8 +470,24 @@
             }
           ]
         }
+      },
+      {
+        "path": "/offers/{offerId}",
+        "definition": {
+          "entityName": "Offer",
+          "schema": {
+            "$ref": "#/backend/entities/Offer"
+          },
+          "description": "Stores pharmacy offers for the main page carousel.",
+          "params": [
+            {
+              "name": "offerId",
+              "description": "The unique identifier for the offer."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the Sehaty application's features, focusing on user-specific data and shared resources. User-specific data such as bookings are stored under the `/users/{userId}` path to ensure clear ownership and straightforward security rules. A global `/bookings` collection is added for admin-level access to all bookings. The structure employs path-based ownership for `bookings` to easily manage user-specific data.  Authorization independence is achieved by not relying on `get()` calls in security rules.\n\n*   **/users/{userId}:**  Stores user profiles. Bookings are placed as subcollections to establish ownership.\n*   **/pharmacies:** Stores information about pharmacies available in the app.\n*   **/physiotherapyPackages:**  Stores available physiotherapy packages.\n*   **/nursingCareServices:** Stores nursing care services information.\n*   **/labServices:** Stores available lab services.\n*   **/clinics:** Stores clinic information.\n*   **/clinics/{clinicId}/doctors:** Doctors are stored as a subcollection of clinics to indicate clinic affiliation.\n*   **/bookings:** A global collection of all bookings for admin oversight.\n\nThis structure facilitates secure list operations (QAPs) by segregating data based on ownership and service type.  It avoids mixing data with different access needs within the same collection.  The use of hierarchical paths for user-owned data (e.g., `/users/{userId}/bookings/{bookingId}`) simplifies security rules based on user ID."
+    "reasoning": "The Firestore structure is designed to support the Sehaty application's features, focusing on user-specific data and shared resources. User-specific data such as bookings are stored under the `/users/{userId}` path to ensure clear ownership and straightforward security rules. A global `/bookings` collection is added for admin-level access to all bookings. The structure employs path-based ownership for `bookings` to easily manage user-specific data.  Authorization independence is achieved by not relying on `get()` calls in security rules.\n\n*   **/users/{userId}:**  Stores user profiles. Bookings are placed as subcollections to establish ownership.\n*   **/pharmacies:** Stores information about pharmacies available in the app.\n*   **/physiotherapyPackages:**  Stores available physiotherapy packages.\n*   **/nursingCareServices:** Stores nursing care services information.\n*   **/labServices:** Stores available lab services.\n*   **/clinics:** Stores clinic information.\n*   **/clinics/{clinicId}/doctors:** Doctors are stored as a subcollection of clinics to indicate clinic affiliation.\n*   **/bookings:** A global collection of all bookings for admin oversight.\n*   **/offers:** Stores pharmacy offers for admin management and display on the homepage.\n\nThis structure facilitates secure list operations (QAPs) by segregating data based on ownership and service type.  It avoids mixing data with different access needs within the same collection.  The use of hierarchical paths for user-owned data (e.g., `/users/{userId}/bookings/{bookingId}`) simplifies security rules based on user ID."
   }
 }

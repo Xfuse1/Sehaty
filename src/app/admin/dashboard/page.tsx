@@ -14,7 +14,6 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   
   // This is a temporary solution for admin check during development.
-  // In a production app, you would use custom claims.
   const isAdmin = user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
   useEffect(() => {
@@ -70,7 +69,9 @@ export default function AdminDashboardPage() {
             <CardDescription>
               إضافة وتعديل وحذف عروض الصيدلية التي تظهر في الصفحة الرئيسية.
             </CardDescription>
-            <Button variant="secondary" className="mt-4" disabled>قريباً</Button>
+            <Button asChild className="mt-4">
+              <Link href="/admin/offers">إدارة العروض</Link>
+            </Button>
           </CardContent>
         </Card>
 
