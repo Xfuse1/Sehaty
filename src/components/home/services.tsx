@@ -10,7 +10,7 @@ const services = [
   {
     title: 'الصيدلية الرقمية',
     description: 'عرض الأدوية والمستحضرات الطبية مع نظام إرشاد للاستخدام الآمن.',
-    href: '#',
+    href: '/pharmacy',
     imgSrc: 'https://picsum.photos/seed/pharmacy/600/400',
     imgHint: 'digital pharmacy medication',
   },
