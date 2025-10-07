@@ -26,12 +26,12 @@ export default function Hero() {
         </p>
         <div className="mt-10 flex flex-wrap justify-center gap-4">
           <Button asChild size="lg" className="shadow-lg hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1">
-            <Link href={user ? "/my-bookings" : "/login"}>
-              احجز الآن
+            <Link href="/#services">
+              ابدأ الآن
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline" className="shadow-sm hover:shadow-lg transition-shadow duration-300 transform hover:-translate-y-1 border-2 border-primary/50">
-            <Link href="#">تواصل معنا</Link>
+            <Link href="/about">اعرف المزيد</Link>
           </Button>
         </div>
       </div>
