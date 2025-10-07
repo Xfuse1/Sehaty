@@ -18,19 +18,19 @@ export default function Footer() {
         <div>
             <h4 className="font-bold text-lg mb-4">روابط سريعة</h4>
             <ul className="space-y-3">
-                <li><Link href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">عنّا</Link></li>
-                <li><Link href="#services" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">الخدمات</Link></li>
-                <li><Link href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">الأسئلة الشائعة</Link></li>
-                <li><Link href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">تواصل</Link></li>
+                <li><Link href="/about" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">عنّا</Link></li>
+                <li><Link href="/services" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">الخدمات</Link></li>
+                <li><Link href="/faq" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">الأسئلة الشائعة</Link></li>
+                <li><Link href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">تواصل</Link></li>
             </ul>
         </div>
         
         <div>
             <h4 className="font-bold text-lg mb-4">المساعدة والسياسات</h4>
             <ul className="space-y-3">
-                <li><Link href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">مركز المساعدة</Link></li>
-                <li><Link href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">سياسة الخصوصية</Link></li>
-                <li><Link href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">شروط الاستخدام</Link></li>
+                <li><Link href="/faq" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">مركز المساعدة</Link></li>
+                <li><Link href="/privacy-policy" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">سياسة الخصوصية</Link></li>
+                <li><Link href="/terms-of-use" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200">شروط الاستخدام</Link></li>
             </ul>
         </div>
 

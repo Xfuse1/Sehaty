@@ -23,9 +23,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 const navLinks = [
     { href: "/", label: "الرئيسية" },
-    { href: "#", label: "السجلات" },
-    { href: "#services", label: "الخدمات" },
-    { href: "#", label: "المواعيد" },
+    { href: "/about", label: "عنّا" },
+    { href: "/services", label: "الخدمات" },
+    { href: "/faq", label: "الأسئلة الشائعة" },
+    { href: "/contact", label: "تواصل معنا" },
 ];
 
 export default function Header() {
