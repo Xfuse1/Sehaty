@@ -9,7 +9,8 @@ export default function Footer() {
         <div className="flex flex-col items-center md:items-start gap-4">
             <Link href="/" className="flex items-center gap-2 mb-2">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
-                    <rect width="24" height="24" rx="4" fill="currentColor"/>
+                    <rect x="0.5" y="0.5" width="23" height="23" rx="3.5" fill="white" stroke="#E5E7EB"/>
+                    <rect x="2" y="2" width="20" height="20" rx="2" fill="currentColor"/>
                     <path d="M12 18.35L10.55 17.03C6.4 13.25 4 11.12 4 8.5C4 6.5 5.5 5 7.5 5C9.04 5 10.5 5.95 11.07 7.3H12.94C13.5 5.95 14.96 5 16.5 5C18.5 5 20 6.5 20 8.5C20 11.12 17.6 13.25 13.45 17.04L12 18.35Z" fill="#A78BFA"/>
                 </svg>
                 <span className="font-bold font-headline text-xl text-foreground">صحتي</span>
