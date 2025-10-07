@@ -69,7 +69,7 @@ const features = [
 ];
 
 export default function PharmacyPage() {
-  const whatsappLink = "https://wtsi.me/201211886649";
+  const whatsappLink = "https://wa.me/201211886649";
 
   return (
     <div className="bg-background text-foreground">

@@ -36,7 +36,7 @@ function PhysiotherapyBookingFlow() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [fileName, setFileName] = useState<string | null>(null);
 
-    const whatsappLink = "https://wtsi.me/201211886649";
+    const whatsappLink = "https://wa.me/201211886649";
 
     useEffect(() => {
         if (!isUserLoading && !user) {
