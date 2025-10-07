@@ -46,7 +46,7 @@ const services = [
   {
     title: 'الكشف المنزلي',
     description: 'زيارات طبية منزلية، تشخيص أولي عن بعد، وتوصيات للمتابعة.',
-    href: '#',
+    href: '/home-visit',
     imgSrc: 'https://picsum.photos/seed/homevisit/600/400',
     imgHint: 'doctor visiting patient home',
   },
