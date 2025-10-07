@@ -284,11 +284,14 @@ export default function ClinicsPage() {
                                     <span className="font-bold text-primary">{selectedDoctor.price} ر.س</span>
                                 </div>
                             </div>
-                             <DialogClose asChild>
-                                <Button type="button" variant="secondary" className="mt-4 w-full">
-                                    إغلاق
-                                </Button>
-                            </DialogClose>
+                             <div className="mt-4 flex gap-2">
+                                <Button className="flex-1">حجز</Button>
+                                <DialogClose asChild>
+                                    <Button type="button" variant="secondary" className="flex-1">
+                                        إغلاق
+                                    </Button>
+                                </DialogClose>
+                            </div>
                         </>
                     )}
                 </DialogContent>
@@ -296,3 +299,5 @@ export default function ClinicsPage() {
         </div>
     );
 }
+
+    
