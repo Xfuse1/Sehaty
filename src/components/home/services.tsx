@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -24,7 +25,7 @@ const services = [
   {
     title: 'العمليات الجراحية',
     description: 'استشارات ما قبل العمليات، نظام حجز متخصص، وعمليات تجميل.',
-    href: '#',
+    href: '/surgery',
     imgSrc: 'https://picsum.photos/seed/surgery/600/400',
     imgHint: 'operating room surgery',
   },
