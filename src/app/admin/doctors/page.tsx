@@ -13,7 +13,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogClose
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -62,6 +61,7 @@ export default function DoctorsPage() {
 
   useEffect(() => {
     async function fetchDoctors() {
+      if (!firestore) return;
       try {
         setIsLoading(true);
         const doctorsCol = collection(firestore, 'doctors');
@@ -95,7 +95,7 @@ export default function DoctorsPage() {
   };
 
   const handleSave = async () => {
-    if (!currentDoctor || !currentDoctor.name || !currentDoctor.specialty) {
+    if (!currentDoctor || !currentDoctor.name || !currentDoctor.specialty || !firestore) {
       toast({ variant: 'destructive', title: 'خطأ', description: 'يرجى ملء الحقول المطلوبة.' });
       return;
     }
@@ -106,7 +106,7 @@ export default function DoctorsPage() {
     try {
       let imageUrl = currentDoctor.image || `https://picsum.photos/seed/${currentDoctor.name}/200/200`;
 
-      if (selectedFile) {
+      if (selectedFile && storage) {
         setUploadProgress(0);
         const storageRef = ref(storage, `doctors/${Date.now()}_${selectedFile.name}`);
         const uploadTask = await uploadBytes(storageRef, selectedFile);
@@ -115,7 +115,7 @@ export default function DoctorsPage() {
         setUploadProgress(100);
       }
       
-      const doctorData = {
+      const doctorData: Omit<Doctor, 'id'> = {
         name: currentDoctor.name,
         specialty: currentDoctor.specialty,
         price: Number(currentDoctor.price) || 0,
@@ -124,7 +124,7 @@ export default function DoctorsPage() {
         experience: Number(currentDoctor.experience) || 0,
         rating: Number(currentDoctor.rating) || 0,
         reviews: Number(currentDoctor.reviews) || 0,
-        tags: Array.isArray(currentDoctor.tags) ? currentDoctor.tags : (currentDoctor.tags as string || '').split(',').map(t => t.trim()).filter(Boolean),
+        tags: Array.isArray(currentDoctor.tags) ? currentDoctor.tags : ((currentDoctor.tags as any) || '').split(',').map((t: string) => t.trim()).filter(Boolean),
         bio: currentDoctor.bio || '',
       };
 
@@ -132,7 +132,7 @@ export default function DoctorsPage() {
         const docRef = doc(firestore, 'doctors', currentDoctor.id);
         await updateDoc(docRef, doctorData);
         toast({ title: 'تم التحديث', description: 'تم تحديث بيانات الطبيب بنجاح.' });
-        setDoctors(doctors.map(d => d.id === currentDoctor.id ? { ...d, ...doctorData } : d));
+        setDoctors(doctors.map(d => d.id === currentDoctor.id ? { id: d.id, ...doctorData } : d));
       } else {
         const docRef = await addDoc(collection(firestore, 'doctors'), doctorData);
         toast({ title: 'تمت الإضافة', description: 'تمت إضافة الطبيب بنجاح.' });
@@ -151,7 +151,7 @@ export default function DoctorsPage() {
   };
 
   const handleDelete = async (doctorId: string) => {
-    if(!confirm('هل أنت متأكد من رغبتك في حذف هذا الطبيب؟')) return;
+    if(!firestore || !confirm('هل أنت متأكد من رغبتك في حذف هذا الطبيب؟')) return;
 
     try {
       await deleteDoc(doc(firestore, 'doctors', doctorId));
@@ -201,7 +201,7 @@ export default function DoctorsPage() {
             <TableBody>
                 {isLoading ? (
                 <TableRow>
-                    <TableCell colSpan={5} className="text-center">
+                    <TableCell colSpan={5} className="text-center py-8">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                 </TableRow>
@@ -222,13 +222,13 @@ export default function DoctorsPage() {
                     <TableCell>{doctor.price} ر.س</TableCell>
                     <TableCell className="flex gap-2">
                         <Button variant="outline" size="icon" onClick={() => openDialog(doctor)}><Edit className="h-4 w-4" /></Button>
-                        <Button variant="destructive" size="icon" onClick={() => handleDelete(doctor.id!)}><Trash2 className="h-4 w-4" /></Button>
+                        <Button variant="destructive" size="icon" onClick={() => doctor.id && handleDelete(doctor.id)}><Trash2 className="h-4 w-4" /></Button>
                     </TableCell>
                     </TableRow>
                 ))
                 ) : (
                 <TableRow>
-                    <TableCell colSpan={5} className="text-center">
+                    <TableCell colSpan={5} className="text-center py-8">
                     لا يوجد أطباء حالياً.
                     </TableCell>
                 </TableRow>
@@ -277,19 +277,19 @@ export default function DoctorsPage() {
                 </div>
                 <div>
                     <Label htmlFor="price">رسوم الكشف</Label>
-                    <Input id="price" type="number" value={currentDoctor?.price} onChange={(e) => setCurrentDoctor({...currentDoctor, price: Number(e.target.value)})} />
+                    <Input id="price" type="number" value={currentDoctor?.price || ''} onChange={(e) => setCurrentDoctor({...currentDoctor, price: Number(e.target.value)})} />
                 </div>
                 <div>
                     <Label htmlFor="experience">سنوات الخبرة</Label>
-                    <Input id="experience" type="number" value={currentDoctor?.experience} onChange={(e) => setCurrentDoctor({...currentDoctor, experience: Number(e.target.value)})} />
+                    <Input id="experience" type="number" value={currentDoctor?.experience || ''} onChange={(e) => setCurrentDoctor({...currentDoctor, experience: Number(e.target.value)})} />
                 </div>
                  <div>
                     <Label htmlFor="rating">التقييم (من 5)</Label>
-                    <Input id="rating" type="number" step="0.1" value={currentDoctor?.rating} onChange={(e) => setCurrentDoctor({...currentDoctor, rating: Number(e.target.value)})} />
+                    <Input id="rating" type="number" step="0.1" value={currentDoctor?.rating || ''} onChange={(e) => setCurrentDoctor({...currentDoctor, rating: Number(e.target.value)})} />
                 </div>
                  <div>
                     <Label htmlFor="reviews">عدد المراجعات</Label>
-                    <Input id="reviews" type="number" value={currentDoctor?.reviews} onChange={(e) => setCurrentDoctor({...currentDoctor, reviews: Number(e.target.value)})} />
+                    <Input id="reviews" type="number" value={currentDoctor?.reviews || ''} onChange={(e) => setCurrentDoctor({...currentDoctor, reviews: Number(e.target.value)})} />
                 </div>
             </div>
             <div>
@@ -298,7 +298,7 @@ export default function DoctorsPage() {
             </div>
              <div>
                 <Label htmlFor="tags">الوسوم (مفصولة بفاصلة)</Label>
-                <Input id="tags" value={(Array.isArray(currentDoctor?.tags) ? currentDoctor.tags.join(', ') : currentDoctor?.tags) || ''} onChange={(e) => setCurrentDoctor({...currentDoctor, tags: e.target.value.split(',').map(t => t.trim())})} />
+                <Input id="tags" value={(Array.isArray(currentDoctor?.tags) ? currentDoctor.tags.join(', ') : currentDoctor?.tags) || ''} onChange={(e) => setCurrentDoctor({...currentDoctor, tags: (e.target.value as any).split(',').map((t: string) => t.trim())})} />
             </div>
             <div>
                 <Label htmlFor="bio">النبذة التعريفية</Label>
@@ -326,3 +326,5 @@ export default function DoctorsPage() {
     </div>
   );
 }
+
+    
