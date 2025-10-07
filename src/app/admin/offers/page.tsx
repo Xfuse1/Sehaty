@@ -1,9 +1,10 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useState, useRef } from 'react';
+import { useCollection, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -25,10 +26,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Loader2, PlusCircle, Trash2, Edit } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Edit, Upload } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+
 
 interface Offer {
   id?: string;
@@ -42,14 +45,31 @@ interface Offer {
 
 export default function OffersPage() {
   const firestore = useFirestore();
+  const auth = useAuth();
+  const storage = getStorage();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentOffer, setCurrentOffer] = useState<Partial<Offer> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const offersQuery = useMemoFirebase(() => collection(firestore, 'offers'), [firestore]);
   const { data: offers, isLoading } = useCollection<Omit<Offer, 'id'>>(offersQuery);
   
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setCurrentOffer(prev => ({...prev, imgSrc: event.target?.result as string}));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSave = async () => {
     if (!currentOffer || !currentOffer.name || !currentOffer.newPrice) {
       toast({ variant: 'destructive', title: 'خطأ', description: 'يرجى ملء الحقول المطلوبة.' });
@@ -57,12 +77,29 @@ export default function OffersPage() {
     }
     
     setIsSaving(true);
+    setUploadProgress(null);
+
     try {
+      let imageUrl = currentOffer.imgSrc || 'https://placehold.co/400x400/E2E8F0/A0AEC0?text=Offer';
+
+      if (selectedFile) {
+        setUploadProgress(0); // Start progress
+        const storageRef = ref(storage, `offers/${Date.now()}_${selectedFile.name}`);
+        const uploadTask = await uploadBytes(storageRef, selectedFile);
+        
+        // This is a simplified progress simulation. For real progress, you need uploadBytesResumable.
+        // For simplicity, we'll just show stages.
+        setUploadProgress(50);
+        
+        imageUrl = await getDownloadURL(uploadTask.ref);
+        setUploadProgress(100);
+      }
+      
       const offerData = {
         name: currentOffer.name,
         oldPrice: currentOffer.oldPrice || '',
         newPrice: currentOffer.newPrice,
-        imgSrc: currentOffer.imgSrc || 'https://placehold.co/400x400/E2E8F0/A0AEC0?text=Offer',
+        imgSrc: imageUrl,
         imgHint: currentOffer.imgHint || 'product image',
         discount: currentOffer.discount || '',
       };
@@ -79,11 +116,13 @@ export default function OffersPage() {
       }
       setIsDialogOpen(false);
       setCurrentOffer(null);
+      setSelectedFile(null);
     } catch (error) {
       console.error("Error saving offer:", error);
       toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حفظ العرض.' });
     } finally {
         setIsSaving(false);
+        setUploadProgress(null);
     }
   };
 
@@ -101,6 +140,7 @@ export default function OffersPage() {
   
   const openDialog = (offer: Partial<Offer> | null = null) => {
     setCurrentOffer(offer || { name: '', oldPrice: '', newPrice: '', imgSrc: '', imgHint: '', discount: '' });
+    setSelectedFile(null);
     setIsDialogOpen(true);
   }
 
@@ -185,6 +225,23 @@ export default function OffersPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>صورة المنتج</Label>
+              <div className="flex items-center gap-4">
+                <div className="w-24 h-24 rounded-md border flex items-center justify-center bg-muted/50">
+                    {currentOffer?.imgSrc ? (
+                        <Image src={currentOffer.imgSrc} alt="Preview" width={96} height={96} className="rounded-md object-contain" />
+                    ) : (
+                        <span className="text-xs text-muted-foreground">معاينة</span>
+                    )}
+                </div>
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="ml-2 h-4 w-4" />
+                    اختر صورة
+                </Button>
+                <Input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="image/*" />
+              </div>
+            </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="name" className="text-right">
                 اسم المنتج
@@ -210,17 +267,18 @@ export default function OffersPage() {
               <Input id="discount" value={currentOffer?.discount} onChange={(e) => setCurrentOffer({...currentOffer, discount: e.target.value})} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="imgSrc" className="text-right">
-                رابط الصورة
-              </Label>
-              <Input id="imgSrc" value={currentOffer?.imgSrc} onChange={(e) => setCurrentOffer({...currentOffer, imgSrc: e.target.value})} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="imgHint" className="text-right">
                 وصف الصورة (AI)
               </Label>
               <Input id="imgHint" value={currentOffer?.imgHint} onChange={(e) => setCurrentOffer({...currentOffer, imgHint: e.target.value})} className="col-span-3" />
             </div>
+
+            {uploadProgress !== null && (
+                <div className="space-y-1">
+                    <Label>جارِ رفع الصورة...</Label>
+                    <Progress value={uploadProgress} />
+                </div>
+            )}
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -236,3 +294,4 @@ export default function OffersPage() {
     </div>
   );
 }
+
