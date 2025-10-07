@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import { Suspense } from 'react';
@@ -6,12 +7,13 @@ import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, User, Phone, Calendar, Clock, Stethoscope, Home, AlertTriangle } from 'lucide-react';
+import { CheckCircle, User, Phone, Calendar, Clock, Stethoscope, Home, AlertTriangle, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 function ConfirmationCard() {
     const searchParams = useSearchParams();
+    const whatsappNumber = "201211886649";
     
     const bookingDetails = {
         patientName: searchParams.get('patientName') || 'غير متوفر',
@@ -29,6 +31,21 @@ function ConfirmationCard() {
     }));
     
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${qrData}&size=200x200`;
+
+    const whatsappMessage = `
+*🎉 تم تأكيد الحجز بنجاح! 🎉*
+
+*-- تفاصيل الحجز --*
+*رقم الحجز:* ${bookingDetails.bookingId}
+*اسم المريض:* ${bookingDetails.patientName}
+*رقم الهاتف:* ${bookingDetails.patientPhone}
+*الطبيب:* ${bookingDetails.doctorName}
+*التاريخ:* ${bookingDetails.appointmentDate}
+*الوقت:* ${bookingDetails.appointmentTime}
+
+---------------------
+يرجى الاحتفاظ بهذه الرسالة لإظهارها عند الوصول.
+    `;
 
     return (
         <div className="container py-12 flex justify-center items-center">
@@ -86,13 +103,20 @@ function ConfirmationCard() {
                                 <span className="text-muted-foreground mr-auto">{bookingDetails.appointmentTime}</span>
                             </div>
                         </div>
-
-                        <Button asChild className="w-full mt-6" size="lg">
-                            <Link href="/my-bookings">
-                                <Home className="ml-2 h-5 w-5" />
-                                العودة إلى حجوزاتي
-                            </Link>
-                        </Button>
+                        <div className="w-full flex flex-col gap-3 mt-6">
+                            <Button asChild className="w-full" size="lg">
+                                <Link href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank">
+                                    <MessageSquare className="ml-2 h-5 w-5" />
+                                    مشاركة عبر واتساب
+                                </Link>
+                            </Button>
+                            <Button asChild className="w-full" size="lg" variant="outline">
+                                <Link href="/my-bookings">
+                                    <Home className="ml-2 h-5 w-5" />
+                                    العودة إلى حجوزاتي
+                                </Link>
+                            </Button>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
