@@ -33,7 +33,8 @@ const navLinks = [
 const Logo = () => (
     <div className="flex items-center gap-2">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary-foreground">
-          <path fillRule="evenodd" clipRule="evenodd" d="M0 0H24V24H0V0ZM12 21.35L10.55 20.03C5.4 15.36 2 12.27 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.27 18.6 15.36 13.45 20.03L12 21.35Z" fill="currentColor"/>
+            <rect x="2" y="2" width="20" height="20" rx="4" fill="currentColor"/>
+            <path d="M12.0002 17.4346L11.0556 16.5919C7.81116 13.7291 5.5 11.7025 5.5 9.16016C5.5 7.15967 7.15967 5.5 9.16016 5.5C10.2227 5.5 11.2334 5.95264 12.0002 6.70264C12.7671 5.95264 13.7778 5.5 14.8403 5.5C16.8408 5.5 18.5005 7.15967 18.5005 9.16016C18.5005 11.7025 16.1893 13.7291 12.9449 16.5919L12.0002 17.4346Z" fill="#dc2626"/>
         </svg>
         <span className="font-bold text-xl">صحتي</span>
     </div>
@@ -140,8 +141,9 @@ export default function Header() {
               <SheetContent side="right">
                   <Link href="/" className="flex items-center gap-2 mb-8">
                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
-                        <path fillRule="evenodd" clipRule="evenodd" d="M0 0H24V24H0V0ZM12 21.35L10.55 20.03C5.4 15.36 2 12.27 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.27 18.6 15.36 13.45 20.03L12 21.35Z" fill="currentColor"/>
-                    </svg>
+                        <rect x="2" y="2" width="20" height="20" rx="4" fill="currentColor"/>
+                        <path d="M12.0002 17.4346L11.0556 16.5919C7.81116 13.7291 5.5 11.7025 5.5 9.16016C5.5 7.15967 7.15967 5.5 9.16016 5.5C10.2227 5.5 11.2334 5.95264 12.0002 6.70264C12.7671 5.95264 13.7778 5.5 14.8403 5.5C16.8408 5.5 18.5005 7.15967 18.5005 9.16016C18.5005 11.7025 16.1893 13.7291 12.9449 16.5919L12.0002 17.4346Z" fill="#dc2626"/>
+                     </svg>
                      <span className="font-bold text-xl text-foreground">صحتي</span>
                   </Link>
                   <nav className="flex flex-col gap-6 text-lg font-medium">
