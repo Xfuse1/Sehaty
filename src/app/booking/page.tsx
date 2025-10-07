@@ -25,10 +25,20 @@ function BookingFlow() {
     const [selectedTime, setSelectedTime] = useState<string | undefined>();
     const [paymentMethod, setPaymentMethod] = useState<string>("cash");
     const [isBooking, setIsBooking] = useState(false);
+    const [patientDetails, setPatientDetails] = useState({
+        name: '',
+        phone: '',
+    });
+
 
     useEffect(() => {
         if (!isUserLoading && !user) {
             router.push('/login');
+        } else if (user) {
+            setPatientDetails({
+                name: user.displayName || '',
+                phone: user.phoneNumber || '',
+            })
         }
     }, [user, isUserLoading, router]);
 
@@ -37,29 +47,32 @@ function BookingFlow() {
         if (doctorData) {
             setDoctor(JSON.parse(decodeURIComponent(doctorData)));
         } else {
-            // Handle case where no doctor data is provided, maybe redirect
-            // For now, just log it.
             console.error("No doctor data found in URL.");
         }
     }, [searchParams]);
 
     const handleConfirmBooking = () => {
         setIsBooking(true);
-        // Here you would typically call a function to save the booking to Firestore
-        console.log({
+        
+        const bookingDetails = {
             doctorId: doctor.id,
+            doctorName: doctor.name,
             userId: user?.uid,
-            patientName: user?.displayName,
-            patientPhone: user?.phoneNumber,
-            appointmentDate: selectedDate,
+            patientName: patientDetails.name,
+            patientPhone: patientDetails.phone,
+            appointmentDate: selectedDate?.toLocaleDateString('ar-EG'),
             appointmentTime: selectedTime,
             paymentMethod: paymentMethod,
-        });
+            bookingId: `booking_${Date.now()}`
+        };
 
-        // Simulate booking process
+        // Here you would typically save the booking to Firestore
+        console.log("Booking Details:", bookingDetails);
+        
         setTimeout(() => {
-            router.push('/my-bookings'); 
-        }, 2000);
+            const query = new URLSearchParams(bookingDetails).toString();
+            router.push(`/booking-confirmation?${query}`); 
+        }, 1000);
     }
 
     if (isUserLoading || !user || !doctor) {
@@ -90,11 +103,11 @@ function BookingFlow() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor="name">الاسم الكامل</Label>
-                                    <Input id="name" defaultValue={user.displayName || ''} />
+                                    <Input id="name" value={patientDetails.name} onChange={(e) => setPatientDetails({...patientDetails, name: e.target.value})} />
                                 </div>
                                 <div>
                                     <Label htmlFor="phone">رقم الموبايل</Label>
-                                    <Input id="phone" defaultValue={user.phoneNumber || ''} placeholder="e.g., 05xxxxxxx"/>
+                                    <Input id="phone" value={patientDetails.phone} onChange={(e) => setPatientDetails({...patientDetails, phone: e.target.value})} placeholder="e.g., 05xxxxxxx"/>
                                 </div>
                                 <div>
                                     <Label htmlFor="address">العنوان</Label>
@@ -221,6 +234,3 @@ export default function BookingPage() {
         </Suspense>
     )
 }
-
-
-    
