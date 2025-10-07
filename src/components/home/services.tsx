@@ -31,7 +31,7 @@ const services = [
   {
     title: 'نظام الحجز والمواعيد',
     description: 'حجز وإعادة جدولة المواعيد مع نظام إشعارات وتذكيرات.',
-    href: '#',
+    href: '/new-booking',
     imgSrc: 'https://picsum.photos/seed/booking/600/400',
     imgHint: 'online booking calendar',
   },
@@ -59,7 +59,7 @@ const services = [
   {
     title: 'حجز العيادات المتخصصة',
     description: 'تصفح التخصصات، اختر الأطباء المعتمدين، واطلع على تقييماتهم.',
-    href: '#',
+    href: '/specialized-clinics',
     imgSrc: 'https://picsum.photos/seed/clinics/600/400',
     imgHint: 'specialized clinic interior',
   },
