@@ -47,8 +47,8 @@ const services = [
     title: 'دليل الأطباء',
     description: 'دليل أرقام وعناوين جميع الأطباء، بما في ذلك عدد كبير غير متعاقدين معنا.',
     href: '/doctors-directory',
-    imgSrc: 'https://picsum.photos/seed/booking/600/400',
-    imgHint: 'online booking calendar',
+    imgSrc: 'https://media.istockphoto.com/id/1300457522/photo/doctor-is-holding-large-stack-of-folders.jpg?s=612x612&w=0&k=20&c=wXdo5WtP9NBqP7oVhX9outXpWN_m-cIsvQ8gCMf0C7E=',
+    imgHint: 'doctor files',
   },
   {
     title: 'الكشف المنزلي',
