@@ -1,172 +1,255 @@
 /**
- * @fileoverview Firestore Security Rules for Sehaty Application
+ * @fileoverview Firestore Security Rules for the Sehaty application.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles and their associated bookings.
- * It allows public read access to certain collections like pharmacies, physiotherapy packages, nursing care services, lab services, clinics and offers, while restricting write access to authorized users only.
- * A global bookings collection is added for admin access.
+ * This ruleset enforces a strict user-ownership model for user profiles, appointments, and lab test bookings.
+ * Pharmacies, physiotherapy packages, doctors, clinics, nursing care packages, and lab tests are globally accessible for listing.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles, accessible only by the user themselves.
- * - /users/{userId}/bookings/{bookingId}: Stores booking information for a specific user, accessible only by that user.
- * - /pharmacies/{pharmacyId}: Stores pharmacy information, publicly readable.
- * - /physiotherapyPackages/{packageId}: Stores physiotherapy packages, publicly readable.
- * - /nursingCareServices/{nursingCareId}: Stores nursing care service information, publicly readable.
- * - /labServices/{labServiceId}: Stores lab service information, publicly readable.
- * - /clinics/{clinicId}: Stores clinic information, publicly readable.
- * - /clinics/{clinicId}/doctors/{doctorId}: Stores doctor information associated with a clinic, publicly readable.
- * - /bookings/{bookingId}: A global collection of all bookings, write restricted.
- * - /offers/{offerId}: Stores pharmacy offers, publicly readable.
+ * - /users/{userId}: Stores user profiles. Only the user can read/write their own profile.
+ * - /pharmacies/{pharmacyId}: Stores pharmacy information. Globally readable.
+ * - /physiotherapyPackages/{packageId}: Stores physiotherapy package information. Globally readable.
+ * - /users/{userId}/appointments/{appointmentId}: Stores appointments for a specific user. Only the user can read/write their own appointments.
+ * - /doctors/{doctorId}: Stores doctor information. Globally readable.
+ * - /clinics/{clinicId}: Stores clinic information. Globally readable.
+ * - /nursingCarePackages/{packageId}: Stores nursing care package information. Globally readable.
+ * - /labTests/{labTestId}: Stores lab test information. Globally readable.
+ * - /users/{userId}/labTestBookings/{labTestBookingId}: Stores lab test bookings for a specific user. Only the user can read/write their own lab test bookings.
  *
  * Key Security Decisions:
- * - Users can only access their own profile data and bookings.
- * - Listing of users is disallowed for privacy reasons.
- * - Public read access is granted to pharmacies, physiotherapy packages, nursing care services, lab services, clinics and offers.
- * - No schema validation is enforced in this prototyping phase to allow for flexible data evolution.
+ * - Users can only access their own data under the /users/{userId} path.
+ * - Listing of user documents is disallowed.
+ * - Public read access is granted to pharmacy, physiotherapy package, doctor, clinic, nursing care package, and lab test collections.
  *
  * Denormalization for Authorization:
- * The rules rely on path-based authorization and avoid using `get()` calls for efficiency.
- * For example, bookings are stored under the user's path to easily verify ownership.
+ * - The 'userId' field is denormalized into the /users/{userId}/appointments/{appointmentId} and /users/{userId}/labTestBookings/{labTestBookingId}
+ *   documents to allow for authorization independence and efficient security rules.
  *
  * Structural Segregation:
- * User-specific data (profiles, bookings) is stored under the /users/{userId} path, while shared resources (pharmacies, physiotherapy packages, etc.) are stored in top-level collections.
+ * - User-owned data (appointments, lab test bookings) is stored in user-specific subcollections, separate from globally accessible data (pharmacies, doctors, etc.).
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Secures user profiles, allowing only the user to read and write their own data.
+     * @description Allows users to manage their own profile.
      * @path /users/{userId}
-     * @allow (create, update, get, delete) if the user's auth UID matches the userId in the path.
-     * @deny (create, update, get, delete) if the user's auth UID does not match the userId in the path.
+     * @allow (create) User with ID "user123" creates their profile.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { id: "user123", name: "John Doe", email: "john@example.com", phoneNumber: "123-456-7890" } } }
+     * @allow (get) User with ID "user123" reads their profile.
+     *   Request: { auth: { uid: "user123" } }
+     * @allow (update) User with ID "user123" updates their profile.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { id: "user123", name: "Updated Name" } } }
+     * @allow (delete) User with ID "user123" deletes their profile.
+     *   Request: { auth: { uid: "user123" } }
+     * @deny (create) User with ID "user123" attempts to create a profile with a different ID.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { id: "user456", name: "John Doe" } } }
+     * @deny (get) User with ID "user456" attempts to read user "user123"'s profile.
+     *   Request: { auth: { uid: "user456" } }
      * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-
       allow get: if isOwner(userId);
-      allow list: if false; // Disallowing user listing for privacy.
+      allow list: if false;
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && resource.data.id == userId;
-      allow delete: if isOwner(userId) && resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Secures bookings for a specific user, allowing only the user to read and write their own bookings.
-     * @path /users/{userId}/bookings/{bookingId}
-     * @allow (create, update, get, delete) if the user's auth UID matches the userId in the path.
-     * @deny (create, update, get, delete) if the user's auth UID does not match the userId in the path.
-     * @principle Enforces document ownership for all operations on bookings.
-     */
-    match /users/{userId}/bookings/{bookingId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && resource != null;
-      allow delete: if isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Allows public read access to pharmacy information.
+     * @description Allows anyone to read pharmacy information.
      * @path /pharmacies/{pharmacyId}
-     * @allow (get, list) to anyone.
-     * @deny (create, update, delete) to everyone.
-     * @principle Public read access with restricted writes.
+     * @allow (get) Any user can get a pharmacy.
+     *   Request: { auth: { uid: "user123" } }
+     * @allow (list) Any user can list pharmacies.
+     *   Request: { auth: { uid: "user123" } }
+     * @deny (create) No one can create a pharmacy without specific authorization logic.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { name: "New Pharmacy" } } }
+     * @deny (update) No one can update a pharmacy without specific authorization logic.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { name: "Updated Pharmacy Name" } } }
+     * @deny (delete) No one can delete a pharmacy without specific authorization logic.
+     *   Request: { auth: { uid: "user123" } }
+     * @principle Provides public read access while restricting write access.
      */
     match /pharmacies/{pharmacyId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Allows public read access to physiotherapy packages.
+     * @description Allows anyone to read physiotherapy package information.
      * @path /physiotherapyPackages/{packageId}
-     * @allow (get, list) to anyone.
-     * @deny (create, update, delete) to everyone.
-     * @principle Public read access with restricted writes.
+     * @allow (get) Any user can get a physiotherapy package.
+     *   Request: { auth: { uid: "user123" } }
+     * @allow (list) Any user can list physiotherapy packages.
+     *   Request: { auth: { uid: "user123" } }
+     * @deny (create) No one can create a physiotherapy package without specific authorization logic.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { name: "New Package" } } }
+     * @deny (update) No one can update a physiotherapy package without specific authorization logic.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { name: "Updated Package Name" } } }
+     * @deny (delete) No one can delete a physiotherapy package without specific authorization logic.
+     *   Request: { auth: { uid: "user123" } }
+     * @principle Provides public read access while restricting write access.
      */
     match /physiotherapyPackages/{packageId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Allows public read access to nursing care services.
-     * @path /nursingCareServices/{nursingCareId}
-     * @allow (get, list) to anyone.
-     * @deny (create, update, delete) to everyone.
-     * @principle Public read access with restricted writes.
+     * @description Allows users to manage their own appointments.
+     * @path /users/{userId}/appointments/{appointmentId}
+     * @allow (create) User with ID "user123" creates an appointment.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { userId: "user123", doctorId: "doc456", appointmentDateTime: "2024-01-01T10:00:00Z", status: "booked" } } }
+     * @allow (get) User with ID "user123" reads their appointment.
+     *   Request: { auth: { uid: "user123" } }
+     * @allow (update) User with ID "user123" updates their appointment.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { userId: "user123", status: "confirmed" } } }
+     * @allow (delete) User with ID "user123" deletes their appointment.
+     *   Request: { auth: { uid: "user123" } }
+     * @deny (create) User with ID "user123" attempts to create an appointment for a different user.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { userId: "user456", doctorId: "doc456" } } }
+     * @deny (get) User with ID "user456" attempts to read user "user123"'s appointment.
+     *   Request: { auth: { uid: "user456" } }
+     * @principle Enforces document ownership for all operations.
      */
-    match /nursingCareServices/{nursingCareId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+    match /users/{userId}/appointments/{appointmentId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Allows public read access to lab services.
-     * @path /labServices/{labServiceId}
-     * @allow (get, list) to anyone.
-     * @deny (create, update, delete) to everyone.
-     * @principle Public read access with restricted writes.
+     * @description Allows anyone to read doctor information.
+     * @path /doctors/{doctorId}
+     * @allow (get) Any user can get a doctor.
+     *   Request: { auth: { uid: "user123" } }
+     * @allow (list) Any user can list doctors.
+     *   Request: { auth: { uid: "user123" } }
+     * @deny (create) No one can create a doctor without specific authorization logic.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { name: "Dr. Smith" } } }
+     * @deny (update) No one can update a doctor without specific authorization logic.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { name: "Dr. Updated Name" } } }
+     * @deny (delete) No one can delete a doctor without specific authorization logic.
+     *   Request: { auth: { uid: "user123" } }
+     * @principle Provides public read access while restricting write access.
      */
-    match /labServices/{labServiceId} {
+    match /doctors/{doctorId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Allows public read access to clinic information.
+     * @description Allows anyone to read clinic information.
      * @path /clinics/{clinicId}
-     * @allow (get, list) to anyone.
-     * @deny (create, update, delete) to everyone.
-     * @principle Public read access with restricted writes.
+     * @allow (get) Any user can get a clinic.
+     *   Request: { auth: { uid: "user123" } }
+     * @allow (list) Any user can list clinics.
+     *   Request: { auth: { uid: "user123" } }
+     * @deny (create) No one can create a clinic without specific authorization logic.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { name: "New Clinic" } } }
+     * @deny (update) No one can update a clinic without specific authorization logic.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { name: "Updated Clinic Name" } } }
+     * @deny (delete) No one can delete a clinic without specific authorization logic.
+     *   Request: { auth: { uid: "user123" } }
+     * @principle Provides public read access while restricting write access.
      */
     match /clinics/{clinicId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Allows public read access to doctor information associated with a clinic.
-     * @path /clinics/{clinicId}/doctors/{doctorId}
-     * @allow (get, list) to anyone.
-     * @deny (create, update, delete) to everyone.
-     * @principle Public read access with restricted writes.
+     * @description Allows anyone to read nursing care package information.
+     * @path /nursingCarePackages/{packageId}
+     * @allow (get) Any user can get a nursing care package.
+     *   Request: { auth: { uid: "user123" } }
+     * @allow (list) Any user can list nursing care packages.
+     *   Request: { auth: { uid: "user123" } }
+     * @deny (create) No one can create a nursing care package without specific authorization logic.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { name: "New Package" } } }
+     * @deny (update) No one can update a nursing care package without specific authorization logic.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { name: "Updated Package Name" } } }
+     * @deny (delete) No one can delete a nursing care package without specific authorization logic.
+     *   Request: { auth: { uid: "user123" } }
+     * @principle Provides public read access while restricting write access.
      */
-    match /clinics/{clinicId}/doctors/{doctorId} {
+    match /nursingCarePackages/{packageId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-     /**
-     * @description Restricts write access to bookings.
-     * @path /bookings/{bookingId}
-     * @allow (get, list) to anyone.
-     * @deny (create, update, delete) to everyone.
-     * @principle Restricted writes.
-     */
-    match /bookings/{bookingId} {
-      allow get, list: if false;  // Intentionally restricting get/list
-      allow create, update, delete: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Allows public read access to offers.
-     * @path /offers/{offerId}
-     * @allow (get, list) to anyone.
-     * @deny (create, update, delete) to everyone.
-     * @principle Public read access with restricted writes.
+     * @description Allows anyone to read lab test information.
+     * @path /labTests/{labTestId}
+     * @allow (get) Any user can get a lab test.
+     *   Request: { auth: { uid: "user123" } }
+     * @allow (list) Any user can list lab tests.
+     *   Request: { auth: { uid: "user123" } }
+     * @deny (create) No one can create a lab test without specific authorization logic.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { name: "New Test" } } }
+     * @deny (update) No one can update a lab test without specific authorization logic.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { name: "Updated Test Name" } } }
+     * @deny (delete) No one can delete a lab test without specific authorization logic.
+     *   Request: { auth: { uid: "user123" } }
+     * @principle Provides public read access while restricting write access.
      */
-    match /offers/{offerId} {
+    match /labTests/{labTestId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
+
+    /**
+     * @description Allows users to manage their own lab test bookings.
+     * @path /users/{userId}/labTestBookings/{labTestBookingId}
+     * @allow (create) User with ID "user123" creates a lab test booking.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { userId: "user123", labTestId: "test456", bookingDateTime: "2024-01-02T14:00:00Z" } } }
+     * @allow (get) User with ID "user123" reads their lab test booking.
+     *   Request: { auth: { uid: "user123" } }
+     * @allow (update) User with ID "user123" updates their lab test booking.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { userId: "user123", resultsUrl: "http://example.com/results" } } }
+     * @allow (delete) User with ID "user123" deletes their lab test booking.
+     *   Request: { auth: { uid: "user123" } }
+     * @deny (create) User with ID "user123" attempts to create a lab test booking for a different user.
+     *   Request: { auth: { uid: "user123" }, resource: { data: { userId: "user456", labTestId: "test456" } } }
+     * @deny (get) User with ID "user456" attempts to read user "user123"'s lab test booking.
+     *   Request: { auth: { uid: "user456" } }
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/labTestBookings/{labTestBookingId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+
+  // Helper functions
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  function isOwner(userId) {
+    return isSignedIn() && request.auth.uid == userId;
+  }
+
+  function isExistingOwner(userId) {
+    return isOwner(userId) && resource != null;
   }
 }

@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -9,58 +8,54 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the User entity."
+          "description": "Unique identifier for the user."
         },
         "name": {
           "type": "string",
-          "description": "The user's full name."
+          "description": "User's full name."
         },
         "email": {
           "type": "string",
-          "description": "The user's email address.",
+          "description": "User's email address.",
           "format": "email"
         },
         "phoneNumber": {
           "type": "string",
-          "description": "The user's phone number."
-        },
-        "dateOfBirth": {
-          "type": "string",
-          "description": "The user's date of birth.",
-          "format": "date-time"
+          "description": "User's phone number."
         },
         "address": {
           "type": "string",
-          "description": "The user's address."
+          "description": "User's address."
         }
       },
       "required": [
         "id",
         "name",
-        "email"
+        "email",
+        "phoneNumber"
       ]
     },
     "Pharmacy": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Pharmacy",
       "type": "object",
-      "description": "Represents a pharmacy that users can communicate with.",
+      "description": "Represents a pharmacy in the Sehaty application.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Pharmacy entity."
+          "description": "Unique identifier for the pharmacy."
         },
         "name": {
           "type": "string",
-          "description": "The name of the pharmacy."
+          "description": "Pharmacy's name."
         },
         "whatsappNumber": {
           "type": "string",
-          "description": "The pharmacy's WhatsApp number for communication."
+          "description": "Pharmacy's WhatsApp number for communication."
         },
         "address": {
           "type": "string",
-          "description": "The address of the pharmacy."
+          "description": "Pharmacy's physical address."
         }
       },
       "required": [
@@ -73,162 +68,85 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "PhysiotherapyPackage",
       "type": "object",
-      "description": "Represents a physiotherapy package offered to users.",
+      "description": "Represents a physiotherapy package offered in the Sehaty application.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the PhysiotherapyPackage entity."
+          "description": "Unique identifier for the physiotherapy package."
         },
         "name": {
           "type": "string",
-          "description": "The name of the physiotherapy package."
+          "description": "Name of the physiotherapy package."
         },
         "description": {
           "type": "string",
-          "description": "A description of the services included in the package."
+          "description": "Description of the physiotherapy package."
         },
         "price": {
           "type": "number",
-          "description": "The price of the physiotherapy package."
-        },
-        "duration": {
-          "type": "string",
-          "description": "The duration of the physiotherapy package (e.g., monthly, weekly)."
+          "description": "Price of the physiotherapy package."
         }
       },
       "required": [
         "id",
         "name",
+        "description",
         "price"
       ]
     },
-    "Booking": {
+    "Appointment": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Booking",
+      "title": "Appointment",
       "type": "object",
-      "description": "Represents a booking made by a user for a service.",
+      "description": "Represents an appointment booked through the Sehaty application.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Booking entity."
+          "description": "Unique identifier for the appointment."
         },
         "userId": {
           "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N Booking)"
+          "description": "Reference to User. (Relationship: User 1:N Appointment)"
         },
-        "serviceType": {
+        "doctorId": {
           "type": "string",
-          "description": "The type of service booked (e.g., physiotherapy, nursing, lab)."
-        },
-        "serviceId": {
-          "type": "string",
-          "description": "Reference to the specific service (e.g., PhysiotherapyPackage id, NursingCare id)."
+          "description": "Reference to Doctor. (Relationship: Doctor 1:N Appointment)"
         },
         "appointmentDateTime": {
           "type": "string",
-          "description": "The date and time of the appointment.",
+          "description": "Date and time of the appointment.",
           "format": "date-time"
-        },
-        "paymentMethod": {
-          "type": "string",
-          "description": "The payment method used for the booking (e.g., Visa, Cash)."
         },
         "status": {
           "type": "string",
-          "description": "The status of the booking (e.g., pending, confirmed, completed, cancelled)."
+          "description": "Status of the appointment (e.g., booked, confirmed, completed, cancelled)."
         }
       },
       "required": [
         "id",
         "userId",
-        "serviceType",
-        "serviceId",
-        "appointmentDateTime"
-      ]
-    },
-    "NursingCare": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "NursingCare",
-      "type": "object",
-      "description": "Represents a home nursing care service.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the NursingCare entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the nursing care service."
-        },
-        "description": {
-          "type": "string",
-          "description": "A description of the nursing care services offered."
-        },
-        "price": {
-          "type": "number",
-          "description": "The price of the nursing care service."
-        },
-        "duration": {
-          "type": "string",
-          "description": "The duration of the nursing care service (e.g., monthly, weekly)."
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "price"
-      ]
-    },
-    "LabService": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "LabService",
-      "type": "object",
-      "description": "Represents a lab service offered for sample collection and analysis.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the LabService entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the lab service."
-        },
-        "description": {
-          "type": "string",
-          "description": "A description of the lab service and the analysis performed."
-        },
-        "price": {
-          "type": "number",
-          "description": "The price of the lab service."
-        },
-        "turnaroundTime": {
-          "type": "string",
-          "description": "The estimated turnaround time for the lab results."
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "price"
+        "doctorId",
+        "appointmentDateTime",
+        "status"
       ]
     },
     "Doctor": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Doctor",
       "type": "object",
-      "description": "Represents a doctor in the Sehaty app.",
+      "description": "Represents a doctor available for appointments.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Doctor entity."
+          "description": "Unique identifier for the doctor."
         },
         "name": {
           "type": "string",
-          "description": "The name of the doctor."
+          "description": "Name of the doctor."
         },
-        "speciality": {
+        "specialty": {
           "type": "string",
-          "description": "The medical speciality of the doctor."
+          "description": "Doctor's medical specialty."
         },
         "clinicId": {
           "type": "string",
@@ -238,30 +156,31 @@
       "required": [
         "id",
         "name",
-        "speciality"
+        "specialty",
+        "clinicId"
       ]
     },
     "Clinic": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Clinic",
       "type": "object",
-      "description": "Represents a clinic.",
+      "description": "Represents a clinic where doctors hold appointments.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Clinic entity."
+          "description": "Unique identifier for the clinic."
         },
         "name": {
           "type": "string",
-          "description": "The name of the clinic."
+          "description": "Name of the clinic."
         },
         "address": {
           "type": "string",
-          "description": "The address of the clinic."
+          "description": "Address of the clinic."
         },
         "contactNumber": {
           "type": "string",
-          "description": "The contact phone number of the clinic."
+          "description": "Contact phone number of the clinic."
         }
       },
       "required": [
@@ -269,45 +188,100 @@
         "name"
       ]
     },
-    "Offer": {
+    "NursingCarePackage": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Offer",
+      "title": "NursingCarePackage",
       "type": "object",
-      "description": "Represents a pharmacy offer displayed in the app.",
+      "description": "Represents a home nursing care package.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Offer entity."
+          "description": "Unique identifier for the nursing care package."
         },
         "name": {
           "type": "string",
-          "description": "The name of the product on offer."
+          "description": "Name of the nursing care package (e.g., monthly, weekly)."
         },
-        "oldPrice": {
+        "description": {
           "type": "string",
-          "description": "The original price of the product."
+          "description": "Description of the services included in the package."
         },
-        "newPrice": {
-          "type": "string",
-          "description": "The discounted price of the product."
-        },
-        "imgSrc": {
-          "type": "string",
-          "description": "URL for the product image."
-        },
-        "imgHint": {
-          "type": "string",
-          "description": "A hint for AI to find a relevant image."
-        },
-        "discount": {
-          "type": "string",
-          "description": "The discount percentage or amount (e.g., '20%')."
+        "price": {
+          "type": "number",
+          "description": "Price of the nursing care package."
         }
       },
       "required": [
+        "id",
         "name",
-        "newPrice",
-        "imgSrc"
+        "description",
+        "price"
+      ]
+    },
+    "LabTest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LabTest",
+      "type": "object",
+      "description": "Represents a lab test that can be booked.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the lab test."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the lab test."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the lab test."
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the lab test."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "price"
+      ]
+    },
+    "LabTestBooking": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LabTestBooking",
+      "type": "object",
+      "description": "Represents a booking for a lab test.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the lab test booking."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N LabTestBooking)"
+        },
+        "labTestId": {
+          "type": "string",
+          "description": "Reference to LabTest. (Relationship: LabTest 1:N LabTestBooking)"
+        },
+        "bookingDateTime": {
+          "type": "string",
+          "description": "Date and time of the lab test booking.",
+          "format": "date-time"
+        },
+        "resultsUrl": {
+          "type": "string",
+          "description": "URL where the lab test results can be accessed.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "labTestId",
+        "bookingDateTime"
       ]
     }
   },
@@ -326,11 +300,11 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profiles. Secured by user ID.",
+          "description": "Stores user profiles.  Uses path-based ownership for security.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user."
+              "description": "The unique ID of the user."
             }
           ]
         }
@@ -342,11 +316,11 @@
           "schema": {
             "$ref": "#/backend/entities/Pharmacy"
           },
-          "description": "Stores pharmacy information.",
+          "description": "Stores pharmacy information. Accessible globally for listing.",
           "params": [
             {
               "name": "pharmacyId",
-              "description": "The unique identifier for the pharmacy."
+              "description": "The unique ID of the pharmacy."
             }
           ]
         }
@@ -358,63 +332,47 @@
           "schema": {
             "$ref": "#/backend/entities/PhysiotherapyPackage"
           },
-          "description": "Stores physiotherapy packages.",
+          "description": "Stores physiotherapy package information. Accessible globally for listing.",
           "params": [
             {
               "name": "packageId",
-              "description": "The unique identifier for the physiotherapy package."
+              "description": "The unique ID of the physiotherapy package."
             }
           ]
         }
       },
       {
-        "path": "/users/{userId}/bookings/{bookingId}",
+        "path": "/users/{userId}/appointments/{appointmentId}",
         "definition": {
-          "entityName": "Booking",
+          "entityName": "Appointment",
           "schema": {
-            "$ref": "#/backend/entities/Booking"
+            "$ref": "#/backend/entities/Appointment"
           },
-          "description": "Stores booking information for a specific user. Secured by user ID.",
+          "description": "Stores appointments for a specific user. Uses path-based ownership for security. Includes denormalized 'userId' for authorization independence.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user."
+              "description": "The unique ID of the user."
             },
             {
-              "name": "bookingId",
-              "description": "The unique identifier for the booking."
+              "name": "appointmentId",
+              "description": "The unique ID of the appointment."
             }
           ]
         }
       },
       {
-        "path": "/nursingCareServices/{nursingCareId}",
+        "path": "/doctors/{doctorId}",
         "definition": {
-          "entityName": "NursingCare",
+          "entityName": "Doctor",
           "schema": {
-            "$ref": "#/backend/entities/NursingCare"
+            "$ref": "#/backend/entities/Doctor"
           },
-          "description": "Stores nursing care service information.",
+          "description": "Stores doctor information. Accessible globally for listing.",
           "params": [
             {
-              "name": "nursingCareId",
-              "description": "The unique identifier for the nursing care service."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/labServices/{labServiceId}",
-        "definition": {
-          "entityName": "LabService",
-          "schema": {
-            "$ref": "#/backend/entities/LabService"
-          },
-          "description": "Stores lab service information.",
-          "params": [
-            {
-              "name": "labServiceId",
-              "description": "The unique identifier for the lab service."
+              "name": "doctorId",
+              "description": "The unique ID of the doctor."
             }
           ]
         }
@@ -426,68 +384,68 @@
           "schema": {
             "$ref": "#/backend/entities/Clinic"
           },
-          "description": "Stores clinic information.",
+          "description": "Stores clinic information. Accessible globally for listing.",
           "params": [
             {
               "name": "clinicId",
-              "description": "The unique identifier for the clinic."
+              "description": "The unique ID of the clinic."
             }
           ]
         }
       },
       {
-        "path": "/clinics/{clinicId}/doctors/{doctorId}",
+        "path": "/nursingCarePackages/{packageId}",
         "definition": {
-          "entityName": "Doctor",
+          "entityName": "NursingCarePackage",
           "schema": {
-            "$ref": "#/backend/entities/Doctor"
+            "$ref": "#/backend/entities/NursingCarePackage"
           },
-          "description": "Stores doctor information associated with a clinic.",
+          "description": "Stores nursing care package information. Accessible globally for listing.",
           "params": [
             {
-              "name": "clinicId",
-              "description": "The unique identifier for the clinic."
+              "name": "packageId",
+              "description": "The unique ID of the nursing care package."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/labTests/{labTestId}",
+        "definition": {
+          "entityName": "LabTest",
+          "schema": {
+            "$ref": "#/backend/entities/LabTest"
+          },
+          "description": "Stores lab test information. Accessible globally for listing.",
+          "params": [
+            {
+              "name": "labTestId",
+              "description": "The unique ID of the lab test."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/labTestBookings/{labTestBookingId}",
+        "definition": {
+          "entityName": "LabTestBooking",
+          "schema": {
+            "$ref": "#/backend/entities/LabTestBooking"
+          },
+          "description": "Stores lab test bookings for a specific user. Uses path-based ownership for security. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user."
             },
             {
-              "name": "doctorId",
-              "description": "The unique identifier for the doctor."
-            }
-          ]
-        }
-      },
-       {
-        "path": "/bookings/{bookingId}",
-        "definition": {
-          "entityName": "Booking",
-          "schema": {
-            "$ref": "#/backend/entities/Booking"
-          },
-          "description": "A global collection of all bookings, intended for admin access.",
-          "params": [
-            {
-              "name": "bookingId",
-              "description": "The unique identifier for the booking."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/offers/{offerId}",
-        "definition": {
-          "entityName": "Offer",
-          "schema": {
-            "$ref": "#/backend/entities/Offer"
-          },
-          "description": "Stores pharmacy offers for the main page carousel.",
-          "params": [
-            {
-              "name": "offerId",
-              "description": "The unique identifier for the offer."
+              "name": "labTestBookingId",
+              "description": "The unique ID of the lab test booking."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the Sehaty application's features, focusing on user-specific data and shared resources. User-specific data such as bookings are stored under the `/users/{userId}` path to ensure clear ownership and straightforward security rules. A global `/bookings` collection is added for admin-level access to all bookings. The structure employs path-based ownership for `bookings` to easily manage user-specific data.  Authorization independence is achieved by not relying on `get()` calls in security rules.\n\n*   **/users/{userId}:**  Stores user profiles. Bookings are placed as subcollections to establish ownership.\n*   **/pharmacies:** Stores information about pharmacies available in the app.\n*   **/physiotherapyPackages:**  Stores available physiotherapy packages.\n*   **/nursingCareServices:** Stores nursing care services information.\n*   **/labServices:** Stores available lab services.\n*   **/clinics:** Stores clinic information.\n*   **/clinics/{clinicId}/doctors:** Doctors are stored as a subcollection of clinics to indicate clinic affiliation.\n*   **/bookings:** A global collection of all bookings for admin oversight.\n*   **/offers:** Stores pharmacy offers for admin management and display on the homepage.\n\nThis structure facilitates secure list operations (QAPs) by segregating data based on ownership and service type.  It avoids mixing data with different access needs within the same collection.  The use of hierarchical paths for user-owned data (e.g., `/users/{userId}/bookings/{bookingId}`) simplifies security rules based on user ID."
+    "reasoning": "The Firestore structure is designed to support the Sehaty application's features, focusing on user-specific data and collaborative data where applicable. The structure adheres to Authorization Independence by denormalizing necessary authorization data (like user IDs) into subcollections.  QAPs are supported via structural segregation, with user-owned data separated from global data. For instance, each user has their own collection of LabTestBookings and Appointments which enables efficient listing based on user ID. The 'clinics', 'doctors', 'labTests', 'nursingCarePackages', and 'physiotherapyPackages' collections can be queried globally to get a list of all the entities, as per the application requirements."
   }
 }
