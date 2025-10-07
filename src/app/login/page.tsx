@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { createUserWithEmailAndPassword } from "firebase/auth"
-import { doc } from "firebase/firestore"
+import { signInWithEmailAndPassword } from "firebase/auth"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -26,20 +25,17 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { useAuth, useFirestore } from "@/firebase"
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates"
+import { useAuth } from "@/firebase"
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: "يجب أن يكون الاسم من حرفين على الأقل." }),
   email: z.string().email({ message: "البريد الإلكتروني غير صالح." }),
-  password: z.string().min(8, { message: "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل." }),
+  password: z.string().min(1, { message: "كلمة المرور مطلوبة." }),
 });
 
-export default function SignupPage() {
+export default function LoginPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
       email: "",
       password: "",
     },
@@ -47,33 +43,25 @@ export default function SignupPage() {
   const { toast } = useToast()
   const router = useRouter()
   const auth = useAuth()
-  const firestore = useFirestore()
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
-
-      if (user) {
-        const userRef = doc(firestore, "users", user.uid);
-        const userData = {
-          name: values.name,
-          email: values.email,
-        };
-        setDocumentNonBlocking(userRef, userData, { merge: true });
-        
-        toast({
-          title: "تم إنشاء الحساب بنجاح",
-          description: "مرحباً بك في صحتي!",
-        });
-        router.push("/");
-      }
+      await signInWithEmailAndPassword(auth, values.email, values.password);
+      toast({
+        title: "تم تسجيل الدخول بنجاح",
+        description: "أهلاً بعودتك!",
+      });
+      router.push("/");
     } catch (error: any) {
       console.error(error);
+      let description = "فشل في تسجيل الدخول. الرجاء المحاولة مرة أخرى.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        description = "البريد الإلكتروني أو كلمة المرور غير صحيحة."
+      }
       toast({
         variant: "destructive",
         title: "حدث خطأ ما",
-        description: error.message || "فشل في إنشاء الحساب. الرجاء المحاولة مرة أخرى.",
+        description: description,
       });
     }
   }
@@ -83,27 +71,14 @@ export default function SignupPage() {
       <div className="flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-headline">إنشاء حساب جديد</CardTitle>
+            <CardTitle className="text-2xl font-headline">تسجيل الدخول</CardTitle>
             <CardDescription>
-              أدخل معلوماتك بالأسفل لإنشاء حسابك
+              أدخل بريدك الإلكتروني وكلمة المرور للوصول إلى حسابك
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>الاسم</FormLabel>
-                      <FormControl>
-                        <Input placeholder="الاسم الكامل" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <FormField
                   control={form.control}
                   name="email"
@@ -131,14 +106,14 @@ export default function SignupPage() {
                   )}
                 />
                 <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? "جار الإنشاء..." : "إنشاء حساب"}
+                   {form.formState.isSubmitting ? "جارِ تسجيل الدخول..." : "تسجيل الدخول"}
                 </Button>
               </form>
             </Form>
             <div className="mt-4 text-center text-sm">
-              لديك حساب بالفعل؟{" "}
-              <Link href="/login" className="underline">
-                تسجيل الدخول
+              ليس لديك حساب؟{" "}
+              <Link href="/signup" className="underline">
+                إنشاء حساب
               </Link>
             </div>
           </CardContent>
