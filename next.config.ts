@@ -33,6 +33,12 @@ const nextConfig: NextConfig = {
         hostname: 'cdn.chefaa.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.qrserver.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
