@@ -12,8 +12,8 @@ const services = [
     title: 'الصيدلية الرقمية',
     description: 'عرض الأدوية والمستحضرات الطبية مع نظام إرشاد للاستخدام الآمن.',
     href: '/pharmacy',
-    imgSrc: 'https://picsum.photos/seed/ai_pharmacy/600/400',
-    imgHint: 'digital pharmacy',
+    imgSrc: 'https://i.imgur.com/wY3v2nI.jpeg',
+    imgHint: 'pharmacy shelves medicine',
   },
   {
     title: 'حجز العيادات المتخصصة',
