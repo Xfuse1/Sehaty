@@ -41,10 +41,6 @@ export default function Header() {
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
-    const names = name.split(' ');
-    if (names.length > 1) {
-      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
-    }
     return name[0].toUpperCase();
   }
 
@@ -56,7 +52,7 @@ export default function Header() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-2 cursor-pointer">
-                  <span className="font-semibold text-primary-foreground hidden sm:inline">مرحباً، {user.displayName || 'زائر'}</span>
+                  <span className="font-semibold text-primary-foreground hidden sm:inline">مرحباً، {user.displayName}</span>
                   <Avatar className="h-9 w-9 border-2 border-border">
                     <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || ''} />
                     <AvatarFallback className="bg-primary-foreground text-primary font-bold">{getInitials(user.displayName)}</AvatarFallback>
