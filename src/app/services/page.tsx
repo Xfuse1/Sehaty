@@ -1,6 +1,7 @@
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Stethoscope, FlaskConical, TestTube, Ambulance, Laptop, FileText, Bot, Tag, HeartPulse, Building } from "lucide-react";
+import { ArrowLeft, Stethoscope, FlaskConical, TestTube, Ambulance, Laptop, FileText, Bot, Tag, HeartPulse, Building, Radiation } from "lucide-react";
 import Link from "next/link";
 
 const allServices = [
@@ -21,6 +22,12 @@ const allServices = [
     title: 'التحاليل المخبرية',
     description: 'احجز زيارة لسحب العينات واحصل على نتائج تحاليلك بشكل رقمي.',
     href: '/lab-services',
+  },
+  {
+    icon: <Radiation className="h-8 w-8 text-primary" />,
+    title: 'الأشعة المنزلية',
+    description: 'اطلب أشعة (سونار، X-ray) في منزلك مع فريق متخصص.',
+    href: '/radiology',
   },
   {
     icon: <Ambulance className="h-8 w-8 text-primary" />,
@@ -95,3 +102,5 @@ export default function ServicesPage() {
     </div>
   );
 }
+
+    

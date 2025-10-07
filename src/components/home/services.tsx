@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Radiation } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -13,7 +13,7 @@ const services = [
     description: 'عرض الأدوية والمستحضرات الطبية مع نظام إرشاد للاستخدام الآمن.',
     href: '/pharmacy',
     imgSrc: 'https://media.istockphoto.com/id/1036131880/photo/efficient-pharmacy-operations-thanks-to-teamwork.jpg?s=612x612&w=0&k=20&c=JQPtkW7j14dvFWeLd6JlltULHMw07rJdi5ey7QLqCHc=',
-    imgHint: 'pharmacy shelves medicine',
+    imgHint: 'pharmacy staff working',
   },
   {
     title: 'حجز العيادات المتخصصة',
@@ -35,6 +35,13 @@ const services = [
     href: '/lab-services',
     imgSrc: 'https://picsum.photos/seed/lab/600/400',
     imgHint: 'laboratory analysis microscope',
+  },
+  {
+    title: 'الأشعة المنزلية',
+    description: 'اطلب أشعة (سونار، X-ray) في منزلك مع فريق متخصص.',
+    href: '/radiology',
+    imgSrc: 'https://media.istockphoto.com/id/1477483008/photo/doctors-xray-or-technology-of-3d-lungs-hologram-in-tuberculosis-cancer-or-heart-research-in.jpg?s=612x612&w=0&k=20&c=raHbMpE6I0grfEisaw44BCRwFTpm8-5AXKpTA080nsc=',
+    imgHint: 'doctor examining xray',
   },
   {
     title: 'دليل الأطباء',
@@ -77,7 +84,7 @@ export default function Services() {
               نقدم مجموعة شاملة من الخدمات الطبية لتلبية جميع احتياجاتك الصحية
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {services.map((service) => (
               <Link href={service.href} key={service.title} className="group block">
                 <Card className="h-full bg-card rounded-xl border overflow-hidden transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1">
@@ -107,3 +114,5 @@ export default function Services() {
       </section>
   );
 }
+
+    

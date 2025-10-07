@@ -7,7 +7,7 @@ import { useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Stethoscope, FlaskConical, HeartPulse, TestTube, ArrowLeft, Ambulance, Building } from "lucide-react"
+import { Stethoscope, FlaskConical, HeartPulse, TestTube, ArrowLeft, Ambulance, Building, Radiation } from "lucide-react"
 import Image from "next/image"
 
 const services = [
@@ -42,6 +42,14 @@ const services = [
         href: '/lab-services',
         imgSrc: 'https://picsum.photos/seed/lab/600/400',
         imgHint: 'laboratory analysis microscope',
+      },
+      {
+        icon: <Radiation className="h-10 w-10 text-primary" />,
+        title: 'الأشعة المنزلية',
+        description: 'اطلب أشعة (سونار، X-ray) في منزلك مع فريق متخصص.',
+        href: '/radiology',
+        imgSrc: 'https://media.istockphoto.com/id/1477483008/photo/doctors-xray-or-technology-of-3d-lungs-hologram-in-tuberculosis-cancer-or-heart-research-in.jpg?s=612x612&w=0&k=20&c=raHbMpE6I0grfEisaw44BCRwFTpm8-5AXKpTA080nsc=',
+        imgHint: 'doctor examining xray',
       },
       {
         icon: <Ambulance className="h-10 w-10 text-primary" />,
@@ -117,3 +125,5 @@ export default function NewBookingPage() {
     </div>
   )
 }
+
+    
