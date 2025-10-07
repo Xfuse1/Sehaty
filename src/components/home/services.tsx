@@ -19,8 +19,8 @@ const services = [
     title: 'حجز العيادات المتخصصة',
     description: 'تصفح التخصصات، اختر الأطباء المعتمدين، واطلع على تقييماتهم.',
     href: '/specialized-clinics',
-    imgSrc: 'https://picsum.photos/seed/clinics/600/400',
-    imgHint: 'specialized clinic interior',
+    imgSrc: 'https://media.istockphoto.com/id/2185377913/photo/hospital-nurse-and-mature-man-in-lobby-with-paperwork-for-appointment-consultation-and.jpg?s=612x612&w=0&k=20&c=qouevBBCKExaCSqj-2ucZyvYKB4f4Plf5KjPVL0yFQ8=',
+    imgHint: 'nurse patient consultation',
   },
   {
     title: 'العمليات الجراحية',

@@ -16,15 +16,15 @@ const services = [
         title: 'العيادات المتخصصة',
         description: 'احجز موعدًا مع أحد أطبائنا الخبراء في مختلف التخصصات.',
         href: '/specialized-clinics',
-        imgSrc: 'https://picsum.photos/seed/clinics/600/400',
-        imgHint: 'specialized clinic interior',
+        imgSrc: 'https://media.istockphoto.com/id/2185377913/photo/hospital-nurse-and-mature-man-in-lobby-with-paperwork-for-appointment-consultation-and.jpg?s=612x612&w=0&k=20&c=qouevBBCKExaCSqj-2ucZyvYKB4f4Plf5KjPVL0yFQ8=',
+        imgHint: 'nurse patient consultation',
       },
       {
         icon: <HeartPulse className="h-10 w-10 text-primary" />,
         title: 'العلاج الطبيعي',
         description: 'جدولة جلسات ومتابعة خطط العلاج الطبيعي مع مختصين.',
         href: '/physiotherapy',
-        imgSrc: 'https://picsum.photos/seed/physiotherapy/600/400',
+        imgSrc: 'https://media.istockphoto.com/id/2181897384/photo/holding-puzzle-piece-shaped-like-brain-with-sunlight-background.jpg?s=612x612&w=0&k=20&c=RAE1KhZPoIKk_dXfOVyL2WMfEJ-RgLoFt4xwxt2-gzA=',
         imgHint: 'physical therapy patient',
       },
       {
@@ -32,7 +32,7 @@ const services = [
         title: 'الرعاية التمريضية',
         description: 'اطلب خدمات تمريضية منزلية احترافية لرعاية أحبائك.',
         href: '/nursing-care',
-        imgSrc: 'https://picsum.photos/seed/nursing/600/400',
+        imgSrc: 'https://media.istockphoto.com/id/1719538017/photo/home-care-healthcare-professional-hugging-senior-patient.jpg?s=612x612&w=0&k=20&c=DTQwVD1DTH0CMQ78aox8-cVKg8Nl-wCkSwY-S072M4E=',
         imgHint: 'nurse home care',
       },
       {
@@ -40,7 +40,7 @@ const services = [
         title: 'التحاليل المخبرية',
         description: 'احجز زيارة منزلية لسحب العينات واحصل على نتائج دقيقة.',
         href: '/lab-services',
-        imgSrc: 'https://picsum.photos/seed/lab/600/400',
+        imgSrc: 'https://media.istockphoto.com/id/2178146294/photo/health-engineer-bioprinting-models-at-a-3d-laboratory.jpg?s=612x612&w=0&k=20&c=Qm2_TwjhuCaMegVVEVPZ-opa6susessdOCZTh4ed5II=',
         imgHint: 'laboratory analysis microscope',
       },
       {
@@ -56,7 +56,7 @@ const services = [
         title: 'الكشف المنزلي',
         description: 'اطلب زيارة طبيب إلى منزلك للحالات غير الطارئة.',
         href: '/home-visit',
-        imgSrc: 'https://picsum.photos/seed/homevisit/600/400',
+        imgSrc: 'https://media.istockphoto.com/id/1152844782/photo/im-glad-to-see-you-doing-well.jpg?s=612x612&w=0&k=20&c=r7KVPoP1UT4qANvyr3jeXokWVdnUOJ732on6Ve-ynCY=',
         imgHint: 'doctor home visit',
       },
       {
@@ -64,7 +64,7 @@ const services = [
         title: 'دليل الأطباء',
         description: 'ابحث عن معلومات التواصل مع الأطباء والصيدليات.',
         href: '/doctors-directory',
-        imgSrc: 'https://picsum.photos/seed/directory/600/400',
+        imgSrc: 'https://media.istockphoto.com/id/1300457522/photo/doctor-is-holding-large-stack-of-folders.jpg?s=612x612&w=0&k=20&c=wXdo5WtP9NBqP7oVhX9outXpWN_m-cIsvQ8gCMf0C7E=',
         imgHint: 'medical directory book',
       }
 ]
@@ -125,5 +125,3 @@ export default function NewBookingPage() {
     </div>
   )
 }
-
-    
