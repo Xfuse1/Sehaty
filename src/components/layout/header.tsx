@@ -32,9 +32,9 @@ const navLinks = [
 
 const Logo = () => (
     <div className="flex items-center gap-2">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary-foreground">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
             <rect width="24" height="24" rx="4" fill="currentColor"/>
-            <path d="M12.0002 17.4346L11.0556 16.5919C7.81116 13.7291 5.5 11.7025 5.5 9.16016C5.5 7.15967 7.15967 5.5 9.16016 5.5C10.2227 5.5 11.2334 5.95264 12.0002 6.70264C12.7671 5.95264 13.7778 5.5 14.8403 5.5C16.8408 5.5 18.5005 7.15967 18.5005 9.16016C18.5005 11.7025 16.1893 13.7291 12.9449 16.5919L12.0002 17.4346Z" fill="#A78BFA"/>
+            <path d="M12 18.35L10.55 17.03C6.4 13.25 4 11.12 4 8.5C4 6.5 5.5 5 7.5 5C9.04 5 10.5 5.95 11.07 7.3H12.94C13.5 5.95 14.96 5 16.5 5C18.5 5 20 6.5 20 8.5C20 11.12 17.6 13.25 13.45 17.04L12 18.35Z" fill="#A78BFA"/>
         </svg>
         <span className="font-bold text-xl">صحتي</span>
     </div>
@@ -142,7 +142,7 @@ export default function Header() {
                   <Link href="/" className="flex items-center gap-2 mb-8">
                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
                         <rect width="24" height="24" rx="4" fill="currentColor"/>
-                        <path d="M12.0002 17.4346L11.0556 16.5919C7.81116 13.7291 5.5 11.7025 5.5 9.16016C5.5 7.15967 7.15967 5.5 9.16016 5.5C10.2227 5.5 11.2334 5.95264 12.0002 6.70264C12.7671 5.95264 13.7778 5.5 14.8403 5.5C16.8408 5.5 18.5005 7.15967 18.5005 9.16016C18.5005 11.7025 16.1893 13.7291 12.9449 16.5919L12.0002 17.4346Z" fill="#8B5CF6"/>
+                        <path d="M12 18.35L10.55 17.03C6.4 13.25 4 11.12 4 8.5C4 6.5 5.5 5 7.5 5C9.04 5 10.5 5.95 11.07 7.3H12.94C13.5 5.95 14.96 5 16.5 5C18.5 5 20 6.5 20 8.5C20 11.12 17.6 13.25 13.45 17.04L12 18.35Z" fill="#A78BFA"/>
                      </svg>
                      <span className="font-bold text-xl text-foreground">صحتي</span>
                   </Link>
