@@ -2,9 +2,9 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { useCollection, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -45,8 +45,7 @@ interface Offer {
 
 export default function OffersPage() {
   const firestore = useFirestore();
-  const auth = useAuth();
-  const storage = getStorage();
+  const storage = useStorage();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentOffer, setCurrentOffer] = useState<Partial<Offer> | null>(null);
@@ -294,4 +293,3 @@ export default function OffersPage() {
     </div>
   );
 }
-
