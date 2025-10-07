@@ -1,6 +1,7 @@
 
 "use client"
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import { Search, Heart, Brain, Bone, Eye, Baby, Stethoscope, Scissors, Dna, Ear, Activity, Star, MapPin, Clock, Smile, X } from "lucide-react";
 import Image from "next/image";
+import { useUser } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 const specialties = [
   { name: "طب القلب", doctors: 30, icon: <Heart className="w-8 h-8 text-red-500" />, key: "cardiology" },
@@ -27,6 +30,7 @@ const specialties = [
 
 const doctorsData = [
     {
+        id: "doctor1",
         name: "د. فاطمة على الأحمد",
         specialty: "طب الأطفال وحديثي الولادة",
         specialtyKey: "pediatrics",
@@ -41,6 +45,7 @@ const doctorsData = [
         bio: "دكتورة فاطمة هي استشارية طب أطفال بخبرة تمتد لأكثر من 15 عامًا في رعاية الأطفال وحديثي الولادة. حاصلة على دكتوراه في طب الأطفال وتشتهر بتعاملها الممتاز مع الصغار."
     },
     {
+        id: "doctor2",
         name: "د. أحمد محمد السعيد",
         specialty: "طب القلب والأوعية الدموية",
         specialtyKey: "cardiology",
@@ -55,6 +60,7 @@ const doctorsData = [
         bio: "الدكتور أحمد السعيد استشاري مرموق في طب القلب، يتمتع بخبرة 20 عامًا وحاصل على الزمالة الأمريكية. متخصص في علاج أمراض الشرايين التاجية والقسطرة القلبية."
     },
     {
+        id: "doctor3",
         name: "د. سارة خالد المطيري",
         specialty: "الأمراض الجلدية والتجميل",
         specialtyKey: "dermatology",
@@ -69,6 +75,7 @@ const doctorsData = [
         bio: "الدكتورة سارة المطيري استشارية أمراض جلدية وتجميل، معروفة بمهاراتها العالية في الإجراءات التجميلية مثل الفيلر والبوتوكس وعلاج مشاكل البشرة المختلفة."
     },
     {
+        id: "doctor4",
         name: "د. محمود حسن العمري",
         specialty: "جراحة العظام والمفاصل",
         specialtyKey: "orthopedics",
@@ -83,6 +90,7 @@ const doctorsData = [
         bio: "الدكتور محمود العمري استشاري جراحة العظام الحاصل على الزمالة الكندية. متخصص في جراحات تغيير المفاصل والإصابات الرياضية."
     },
      {
+        id: "doctor5",
         name: "د. علي عبدالله",
         specialty: "طب الأسنان",
         specialtyKey: "dentistry",
@@ -97,6 +105,7 @@ const doctorsData = [
         bio: "الدكتور علي أخصائي تقويم وتجميل أسنان بخبرة 10 سنوات. يقدم حلولاً متكاملة للحصول على ابتسامة مثالية باستخدام أحدث التقنيات."
     },
     {
+        id: "doctor6",
         name: "د. نورة سالم",
         specialty: "طب العيون",
         specialtyKey: "ophthalmology",
@@ -120,7 +129,24 @@ export default function ClinicsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('highest-rated');
     const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+    const { user } = useUser();
+    const router = useRouter();
+    const { toast } = useToast();
 
+    const handleBooking = (doctor: Doctor) => {
+        if (!user) {
+            toast({
+                variant: 'destructive',
+                title: 'مطلوب تسجيل الدخول',
+                description: 'الرجاء تسجيل الدخول أولاً لتتمكن من حجز موعد.',
+            });
+            router.push('/login');
+        } else {
+            const doctorData = encodeURIComponent(JSON.stringify(doctor));
+            router.push(`/booking?doctor=${doctorData}`);
+        }
+    };
+    
     const filteredDoctors = doctorsData
         .filter(doctor => 
             (selectedSpecialty ? doctor.specialtyKey === selectedSpecialty : true) &&
@@ -245,7 +271,7 @@ export default function ClinicsPage() {
                                         <p className="text-3xl font-bold text-foreground">{doc.price} <span className="text-lg">ر.س</span></p>
                                      </div>
                                      <div className="w-full flex flex-col gap-2">
-                                        <Button className="w-full">احجز موعد</Button>
+                                        <Button className="w-full" onClick={() => handleBooking(doc)}>احجز موعد</Button>
                                         <Button variant="outline" className="w-full" onClick={() => setSelectedDoctor(doc)}>عرض الملف</Button>
                                      </div>
                                 </div>
@@ -285,7 +311,10 @@ export default function ClinicsPage() {
                                 </div>
                             </div>
                              <div className="mt-4 flex gap-2">
-                                <Button className="flex-1">حجز</Button>
+                                <Button className="flex-1" onClick={() => {
+                                    handleBooking(selectedDoctor);
+                                    setSelectedDoctor(null);
+                                }}>حجز</Button>
                                 <DialogClose asChild>
                                     <Button type="button" variant="secondary" className="flex-1">
                                         إغلاق
