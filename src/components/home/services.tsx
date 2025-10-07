@@ -1,110 +1,93 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import {
-  ArrowLeft
+  ArrowLeft,
+  Pill,
+  Beaker,
+  Stethoscope,
+  CalendarDays,
+  Video,
+  FileText,
+  BadgePercent,
+  Siren
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const services = [
   {
-    title: 'الصيدلية الرقمية',
-    description: 'اطلب أدويتك ومنتجات العناية بسهولة عبر واتساب.',
+    title: 'العيادات المتخصصة',
+    description: 'ابحث عن أفضل الأطباء في مختلف التخصصات.',
     href: '#',
-    image: 'https://picsum.photos/seed/pharmacy/600/400',
-    imageHint: 'pharmacy counter',
-    gradient: 'from-blue-500/10 to-transparent'
+    icon: <Stethoscope className="w-12 h-12 text-primary" />,
   },
   {
-    title: 'الخدمات المخبرية',
-    description: 'حجز زيارات لجمع العينات واستلام النتائج رقمياً.',
+    title: 'الصيدلية',
+    description: 'اطلب أدويتك ومنتجات العناية لتصلك أينما كنت.',
     href: '#',
-    image: 'https://picsum.photos/seed/lab/600/400',
-    imageHint: 'laboratory microscope',
-    gradient: 'from-cyan-500/10 to-transparent'
+    icon: <Pill className="w-12 h-12 text-primary" />,
   },
   {
-    title: 'العيادات',
-    description: 'ابحث عن طبيبك واحجز موعدك في العيادة بنقرة زر.',
+    title: 'المعمل والتحاليل',
+    description: 'احجز لزيارة منزلية لأخذ العينات واستلم النتائج أونلاين.',
     href: '#',
-    image: 'https://picsum.photos/seed/clinic/600/400',
-    imageHint: 'clinic reception',
-    gradient: 'from-purple-500/10 to-transparent'
+    icon: <Beaker className="w-12 h-12 text-primary" />,
   },
   {
-    title: 'العلاج الطبيعي',
-    description: 'جلسات علاج طبيعي منزلية مع أفضل المختصين.',
+    title: 'حجز مواعيد أونلاين',
+    description: 'نظم جدولك الطبي بسهولة ويسر عبر التطبيق.',
     href: '#',
-    image: 'https://picsum.photos/seed/physio/600/400',
-    imageHint: 'physiotherapy session',
-    gradient: 'from-green-500/10 to-transparent'
+    icon: <CalendarDays className="w-12 h-12 text-primary" />,
   },
   {
-    title: 'التمريض المنزلي',
-    description: 'رعاية تمريضية متكاملة في راحة منزلك.',
+    title: 'الاستشارات عن بُعد',
+    description: 'تحدث مع طبيب معتمد عبر الفيديو من راحة منزلك.',
     href: '#',
-    image: 'https://picsum.photos/seed/nursing/600/400',
-    imageHint: 'nurse patient',
-    gradient: 'from-yellow-500/10 to-transparent'
+    icon: <Video className="w-12 h-12 text-primary" />,
   },
   {
-    title: 'استشارة طبيب',
-    description: 'تحدث مع طبيب عبر الفيديو للحصول على استشارة فورية.',
+    title: 'السجلات الطبية',
+    description: 'جميع تقاريرك ونتائجك الطبية في مكان واحد آمن.',
     href: '#',
-    image: 'https://picsum.photos/seed/consult/600/400',
-    imageHint: 'doctor online',
-    gradient: 'from-red-500/10 to-transparent'
+    icon: <FileText className="w-12 h-12 text-primary" />,
   },
   {
-    title: 'حجز المواعيد',
-    description: 'نظم جميع مواعيدك الطبية في مكان واحد.',
+    title: 'العروض والباقات',
+    description: 'استفد من باقات صحية مصممة خصيصاً لك ولعائلتك.',
     href: '#',
-    image: 'https://picsum.photos/seed/booking/600/400',
-    imageHint: 'calendar appointment',
-    gradient: 'from-indigo-500/10 to-transparent'
+    icon: <BadgePercent className="w-12 h-12 text-primary" />,
   },
   {
-    title: 'الكشف المنزلي',
-    description: 'اطلب زيارة طبيب إلى منزلك للكشف والعلاج.',
+    title: 'الطوارئ والدعم',
+    description: 'وصول سريع لخدمات الطوارئ والدعم الفوري عند الحاجة.',
     href: '#',
-    image: 'https://picsum.photos/seed/home-visit/600/400',
-    imageHint: 'doctor home visit',
-    gradient: 'from-pink-500/10 to-transparent'
+    icon: <Siren className="w-12 h-12 text-primary" />,
   }
 ];
 
 export default function Services() {
   return (
-    <section id="services" className="w-full py-16 md:py-24 bg-background">
+    <section id="services" className="w-full py-16 md:py-24 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold font-headline">خدماتنا الأساسية</h2>
+            <h2 className="text-4xl md:text-5xl font-bold font-headline">خدماتنا الصحية المتكاملة</h2>
             <p className="text-lg text-muted-foreground mt-4 max-w-3xl mx-auto">
               نوفر لك كل ما تحتاجه من رعاية صحية في مكان واحد، بسهولة وأمان.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {services.map((service) => (
               <Link href={service.href} key={service.title} className="group block">
-                <Card className={`relative overflow-hidden h-full bg-card rounded-2xl border transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary/20 transform hover:-translate-y-2`}>
-                   <div className={`absolute inset-0 bg-gradient-to-b ${service.gradient} opacity-50 group-hover:opacity-100 transition-opacity duration-300`}></div>
-                  <div className="relative">
-                    <Image 
-                      src={service.image}
-                      alt={service.title}
-                      width={600}
-                      height={400}
-                      className="w-full h-48 object-cover"
-                      data-ai-hint={service.imageHint}
-                    />
-                    <CardContent className="p-6">
-                      <h3 className="font-bold font-headline text-2xl text-foreground mb-2">{service.title}</h3>
-                      <p className="text-muted-foreground mb-4">{service.description}</p>
-                      <div className="flex items-center text-primary font-semibold group-hover:text-primary transition-colors">
-                        اعرف المزيد
-                        <ArrowLeft className="mr-2 h-5 w-5 transform transition-transform duration-300 group-hover:-translate-x-1" />
-                      </div>
-                    </CardContent>
-                  </div>
+                <Card className="h-full bg-background rounded-2xl border-transparent transition-all duration-300 ease-in-out hover:shadow-xl hover:border-primary/20 transform hover:-translate-y-2">
+                  <CardContent className="p-8 text-center">
+                    <div className="flex justify-center items-center mb-6 transition-transform duration-300 group-hover:scale-110">
+                      {service.icon}
+                    </div>
+                    <h3 className="font-bold font-headline text-xl text-foreground mb-2">{service.title}</h3>
+                    <p className="text-muted-foreground mb-4 text-sm">{service.description}</p>
+                    <div className="flex items-center justify-center text-primary font-semibold group-hover:text-primary transition-colors">
+                      اعرف المزيد
+                      <ArrowLeft className="mr-2 h-4 w-4 transform transition-transform duration-300 group-hover:-translate-x-1" />
+                    </div>
+                  </CardContent>
                 </Card>
               </Link>
             ))}

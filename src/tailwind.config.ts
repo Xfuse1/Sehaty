@@ -18,10 +18,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['"PT Sans"', ...fontFamily.sans],
+        sans: ['"Cairo"', ...fontFamily.sans],
         mono: ['var(--font-geist-mono)', ...fontFamily.mono],
-        body: ['"PT Sans"', 'sans-serif'],
-        headline: ['"PT Sans"', 'sans-serif'],
+        body: ['"Cairo"', 'sans-serif'],
+        headline: ['"Cairo"', 'sans-serif'],
       },
       colors: {
         background: 'hsl(var(--background))',

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { StethoscopeIcon, LogOut, Loader2, Menu, Languages, Heart } from 'lucide-react';
+import { StethoscopeIcon, LogOut, Loader2, Menu, Languages, Phone } from 'lucide-react';
 import { useUser, useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import {
@@ -23,9 +23,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 const navLinks = [
     { href: "/", label: "الرئيسية" },
-    { href: "#", label: "الصيدلية" },
-    { href: "#", label: "المعمل" },
-    { href: "#", label: "العيادات" },
+    { href: "#", label: "عنّا" },
+    { href: "#services", label: "الخدمات" },
+    { href: "#", label: "الأسئلة الشائعة" },
+    { href: "#", label: "تواصل" },
 ];
 
 export default function Header() {
@@ -111,11 +112,12 @@ export default function Header() {
 
         <div className="hidden md:flex items-center gap-2">
           <Button variant="ghost" size="icon"><Languages className="h-5 w-5 text-muted-foreground" /></Button>
-          <Button variant="ghost" size="icon"><Heart className="h-5 w-5 text-muted-foreground" /></Button>
+          <Button variant="ghost" size="icon"><Phone className="h-5 w-5 text-muted-foreground" /></Button>
           {userMenu}
         </div>
         
         <div className="md:hidden flex items-center">
+            {userMenu}
             <Sheet>
                 <SheetTrigger asChild>
                     <Button variant="ghost" size="icon">
@@ -128,11 +130,6 @@ export default function Header() {
                             <Link key={link.href} href={link.href} className="text-muted-foreground hover:text-foreground">{link.label}</Link>
                         ))}
                     </nav>
-                    <div className="mt-8 pt-6 border-t">
-                        <div className="flex flex-col gap-4">
-                           {userMenu}
-                        </div>
-                    </div>
                 </SheetContent>
             </Sheet>
         </div>
