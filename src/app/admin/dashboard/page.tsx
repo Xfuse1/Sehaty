@@ -13,18 +13,14 @@ export default function AdminDashboardPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   
-  // This is a temporary solution for admin check during development.
-  const isAdmin = user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+  // Admin access is now granted to any logged-in user for easier development.
+  const isAdmin = !!user;
 
   useEffect(() => {
-    if (!isUserLoading) {
-      if (!user) {
-        router.push('/login');
-      } else if (!isAdmin) {
-        router.push('/');
-      }
+    if (!isUserLoading && !user) {
+      router.push('/login');
     }
-  }, [user, isUserLoading, isAdmin, router]);
+  }, [user, isUserLoading, router]);
 
   if (isUserLoading || !isAdmin) {
     return (
@@ -38,10 +34,10 @@ export default function AdminDashboardPage() {
                 </CardHeader>
                 <CardContent>
                     <p className="text-muted-foreground">
-                        ليس لديك الصلاحيات اللازمة للوصول إلى هذه الصفحة.
+                        يجب عليك تسجيل الدخول للوصول إلى هذه الصفحة.
                     </p>
                     <Button asChild className="mt-6">
-                        <Link href="/">العودة إلى الرئيسية</Link>
+                        <Link href="/login">تسجيل الدخول</Link>
                     </Button>
                 </CardContent>
             </Card>
@@ -55,7 +51,7 @@ export default function AdminDashboardPage() {
       <header className="mb-12">
         <h1 className="text-4xl font-bold font-headline text-primary">لوحة تحكم المسؤول</h1>
         <p className="mt-2 text-lg text-muted-foreground">
-          أهلاً بك يا مدير. من هنا يمكنك إدارة محتوى التطبيق.
+          أهلاً بك. من هنا يمكنك إدارة محتوى التطبيق.
         </p>
       </header>
 
