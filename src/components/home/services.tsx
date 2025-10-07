@@ -17,7 +17,7 @@ const services = [
   {
     title: 'العلاج الطبيعي',
     description: 'جدولة جلسات العلاج الطبيعي ومتابعة خطط العلاج وإرشادات منزلية.',
-    href: '#',
+    href: '/physiotherapy',
     imgSrc: 'https://picsum.photos/seed/physiotherapy/600/400',
     imgHint: 'physical therapy patient',
   },

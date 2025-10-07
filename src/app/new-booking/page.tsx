@@ -22,7 +22,7 @@ const services = [
         icon: <HeartPulse className="h-10 w-10 text-primary" />,
         title: 'العلاج الطبيعي',
         description: 'جدولة جلسات ومتابعة خطط العلاج الطبيعي مع مختصين.',
-        href: '#',
+        href: '/physiotherapy',
         imgSrc: 'https://picsum.photos/seed/physiotherapy/600/400',
         imgHint: 'physical therapy patient',
       },
