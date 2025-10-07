@@ -12,7 +12,7 @@ const services = [
     title: 'الصيدلية الرقمية',
     description: 'عرض الأدوية والمستحضرات الطبية مع نظام إرشاد للاستخدام الآمن.',
     href: '/pharmacy',
-    imgSrc: 'https://i.imgur.com/wY3v2nI.jpeg',
+    imgSrc: 'https://media.istockphoto.com/id/1036131880/photo/efficient-pharmacy-operations-thanks-to-teamwork.jpg?s=612x612&w=0&k=20&c=JQPtkW7j14dvFWeLd6JlltULHMw07rJdi5ey7QLqCHc=',
     imgHint: 'pharmacy shelves medicine',
   },
   {
