@@ -63,11 +63,11 @@ const services = [
     gradient: 'from-indigo-500/10 to-transparent'
   },
   {
-    title: 'الأجهزة الطبية',
-    description: 'استأجر أو اشترِ أجهزة طبية عالية الجودة.',
+    title: 'الكشف المنزلي',
+    description: 'اطلب زيارة طبيب إلى منزلك للكشف والعلاج.',
     href: '#',
-    image: 'https://picsum.photos/seed/medical-devices/600/400',
-    imageHint: 'medical equipment',
+    image: 'https://picsum.photos/seed/home-visit/600/400',
+    imageHint: 'doctor home visit',
     gradient: 'from-pink-500/10 to-transparent'
   }
 ];
