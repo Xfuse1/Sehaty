@@ -30,9 +30,9 @@ const services = [
     imgHint: 'operating room surgery',
   },
   {
-    title: 'نظام الحجز والمواعيد',
-    description: 'حجز وإعادة جدولة المواعيد مع نظام إشعارات وتذكيرات.',
-    href: '/new-booking',
+    title: 'دليل الأطباء',
+    description: 'دليل أرقام وعناوين جميع الأطباء، بما في ذلك عدد كبير غير متعاقدين معنا.',
+    href: '/specialized-clinics',
     imgSrc: 'https://picsum.photos/seed/booking/600/400',
     imgHint: 'online booking calendar',
   },
