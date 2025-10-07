@@ -13,7 +13,7 @@ export default function Cta() {
         </p>
         <div className="mt-8">
           <Button asChild size="lg" className="shadow-lg hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1">
-            <Link href="/my-bookings">
+            <Link href="/new-booking">
               ابدأ الحجز
             </Link>
           </Button>
