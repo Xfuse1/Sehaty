@@ -13,13 +13,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 function ConfirmationCard() {
     const searchParams = useSearchParams();
-    const whatsappNumber = "201211886649";
+    const whatsappLink = "https://wtsi.me/201211886649";
     
     const bookingDetails = {
         patientName: searchParams.get('patientName') || 'غير متوفر',
         patientPhone: searchParams.get('patientPhone') || 'غير متوفر',
         appointmentDate: searchParams.get('appointmentDate') || 'غير متوفر',
-        appointmentTime: searchParams.get('appointmentTime') || 'غير متوفر',
+        appointmentTime: search_params.get('appointmentTime') || 'غير متوفر',
         doctorName: searchParams.get('doctorName') || 'غير متوفر',
         bookingId: searchParams.get('bookingId') || 'N/A',
     };
@@ -105,7 +105,7 @@ function ConfirmationCard() {
                         </div>
                         <div className="w-full flex flex-col gap-3 mt-6">
                             <Button asChild className="w-full" size="lg">
-                                <Link href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank">
+                                <Link href={`${whatsappLink}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank">
                                     <MessageSquare className="ml-2 h-5 w-5" />
                                     مشاركة عبر واتساب
                                 </Link>

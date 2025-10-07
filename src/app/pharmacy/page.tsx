@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import { Badge } from "@/components/ui/badge";
@@ -68,7 +69,7 @@ const features = [
 ];
 
 export default function PharmacyPage() {
-  const whatsappNumber = "201211886649";
+  const whatsappLink = "https://wtsi.me/201211886649";
 
   return (
     <div className="bg-background text-foreground">
@@ -108,7 +109,7 @@ export default function PharmacyPage() {
                     <div className="flex flex-col items-center justify-center text-center gap-4">
                         <p className="text-muted-foreground">اضغط إرسال وسيتم تحويلك إلى واتساب مباشرةً لاستكمال طلبك مع الصيدلي.</p>
                         <Button asChild size="lg" className="w-full text-lg">
-                            <Link href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent("أرغب في طلب روشتة")}`} target="_blank">
+                            <Link href={`${whatsappLink}?text=${encodeURIComponent("أرغب في طلب روشتة")}`} target="_blank">
                                 <Bot className="ml-2 h-6 w-6" />
                                 إرسال الطلب الآن
                             </Link>
@@ -156,7 +157,7 @@ export default function PharmacyPage() {
                   </CardContent>
                   <CardFooter className="p-4 pt-0">
                     <Button asChild className="w-full" variant="secondary">
-                      <Link href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`أرغب في طلب منتج: ${product.name}`)}`} target="_blank">
+                      <Link href={`${whatsappLink}?text=${encodeURIComponent(`أرغب في طلب منتج: ${product.name}`)}`} target="_blank">
                         اطلب الآن
                       </Link>
                     </Button>
