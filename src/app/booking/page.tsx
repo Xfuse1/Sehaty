@@ -53,14 +53,18 @@ function BookingFlow() {
     useEffect(() => {
         const doctorData = searchParams.get('doctor');
         if (doctorData) {
-            setDoctor(JSON.parse(decodeURIComponent(doctorData)));
-        } else {
-             if (!doctor) {
-                // Prevent infinite redirect loop, only redirect if doctor is not set
-                // router.push('/new-booking');
+            try {
+                const parsedDoctor = JSON.parse(decodeURIComponent(doctorData));
+                // Only update state if doctor data is different
+                if (JSON.stringify(parsedDoctor) !== JSON.stringify(doctor)) {
+                    setDoctor(parsedDoctor);
+                }
+            } catch (e) {
+                console.error("Failed to parse doctor data", e);
+                // Handle error, maybe redirect or show a message
             }
         }
-    }, [searchParams, router, doctor]);
+    }, [searchParams, doctor]);
 
     const handleConfirmBooking = () => {
         setIsBooking(true);
@@ -198,7 +202,7 @@ function BookingFlow() {
                             <CardTitle>3. اختر طريقة الدفع</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <RadioGroup defaultValue="cash" onValueChange={setPaymentMethod}>
+                            <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                                 <div className="flex items-center space-x-2 space-x-reverse">
                                     <RadioGroupItem value="cash" id="r1" />
                                     <Label htmlFor="r1" className="flex-grow">الدفع عند الوصول</Label>
@@ -270,3 +274,5 @@ export default function BookingPage() {
         </Suspense>
     )
 }
+
+    
