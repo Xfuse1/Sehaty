@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, Camera, FileText, Mic, Bot, Rocket, Clock, Truck } from "lucide-react";
+import { Search, Camera, Bot, Rocket, Clock, Truck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,49 +14,49 @@ const careProducts = [
   {
     name: "كريم ستارفيل للتفتيح",
     price: "85.00 ر.س",
-    imgSrc: "https://picsum.photos/seed/starville/400/300",
+    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/starville-whitening-cream-60gm-01662985303.png",
     imgHint: "whitening cream tube",
   },
   {
     name: "سيروم سيروبايب للشعر",
     price: "150.00 ر.س",
-    imgSrc: "https://picsum.photos/seed/seropipe/400/300",
+    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/seropipe-hair-serum-100ml-lotion-01654093952.png",
     imgHint: "hair serum bottle",
   },
   {
     name: "شامبو كلاري ضد القشرة",
     price: "110.75 ر.س",
-    imgSrc: "https://picsum.photos/seed/clary/400/300",
+    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/clary-anti-dandruff-shampoo-for-oily-hair-250ml-01698759367.png",
     imgHint: "shampoo bottle",
   },
   {
     name: "زيت بندولين للأطفال",
     price: "95.00 ر.س",
-    imgSrc: "https://picsum.photos/seed/penduline/400/300",
+    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/penduline-plus-hair-oil-120ml-01689694294.png",
     imgHint: "baby oil bottle",
   },
   {
     name: "شامبو جونسون للأطفال",
     price: "45.00 ر.س",
-    imgSrc: "https://picsum.photos/seed/johnson/400/300",
+    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/johnsons-baby-shampoo-500ml-01663236085.png",
     imgHint: "baby shampoo",
   },
   {
     name: "لوشن ستارفيل مرطب",
     price: "120.00 ر.س",
-    imgSrc: "https://picsum.photos/seed/starvillelotion/400/300",
+    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/1634215984-starville-hydrating-lotion-for-normal-to-dry-skin-200ml.png",
     imgHint: "moisturizing lotion",
   },
   {
     name: "ماسك كلاري للشعر",
     price: "99.00 ر.س",
-    imgSrc: "https://picsum.photos/seed/clarymask/400/300",
+    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/clary-hair-mask-with-argan-oil-300gm-01675253876.png",
     imgHint: "hair mask jar",
   },
   {
     name: "كريم بندولين كيدز",
     price: "75.50 ر.س",
-    imgSrc: "https://picsum.photos/seed/pendulinekids/400/300",
+    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/penduline-hair-cream-for-kids-150-ml-01653830206.png",
     imgHint: "kids cream tube",
   },
 ];
@@ -137,13 +137,13 @@ export default function PharmacyPage() {
               {careProducts.map((product) => (
                 <Card key={product.name} className="overflow-hidden group">
                   <CardHeader className="p-0">
-                    <div className="relative w-full h-48 bg-card">
+                    <div className="relative w-full h-48 bg-card flex items-center justify-center">
                       <Image
                         src={product.imgSrc}
                         alt={product.name}
                         fill
-                        style={{ objectFit: 'cover' }}
-                        className="transition-transform duration-300 group-hover:scale-110"
+                        style={{ objectFit: 'contain' }}
+                        className="transition-transform duration-300 group-hover:scale-110 p-2"
                         data-ai-hint={product.imgHint}
                       />
                     </div>
