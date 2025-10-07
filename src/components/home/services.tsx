@@ -51,9 +51,9 @@ const services = [
     imgHint: 'doctor visiting patient home',
   },
   {
-    title: 'الخدمات المخبرية',
+    title: 'التحاليل المخبرية',
     description: 'حجز زيارات لسحب العينات، نتائج رقمية، وتفسير للنتائج.',
-    href: '#',
+    href: '/lab-services',
     imgSrc: 'https://picsum.photos/seed/lab/600/400',
     imgHint: 'laboratory analysis microscope',
   },

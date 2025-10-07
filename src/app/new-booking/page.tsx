@@ -39,7 +39,7 @@ const services = [
         icon: <TestTube className="h-10 w-10 text-primary" />,
         title: 'التحاليل المخبرية',
         description: 'احجز زيارة منزلية لسحب العينات واحصل على نتائج دقيقة.',
-        href: '#',
+        href: '/lab-services',
         imgSrc: 'https://picsum.photos/seed/lab/600/400',
         imgHint: 'laboratory analysis microscope',
       },

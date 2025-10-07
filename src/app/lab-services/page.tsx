@@ -1,0 +1,141 @@
+
+"use client";
+
+import { useRef } from 'react';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Camera, Bot, Upload, Droplet, TestTube, Heart, Sun } from "lucide-react";
+import Link from "next/link";
+import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
+
+const commonTests = [
+  {
+    name: "تحليل فيتامين د",
+    price: "180 ر.س",
+    icon: <Sun className="h-8 w-8 text-amber-500" />,
+  },
+  {
+    name: "صورة دم كاملة (CBC)",
+    price: "90 ر.س",
+    icon: <Droplet className="h-8 w-8 text-red-500" />,
+  },
+  {
+    name: "وظائف كلى (Creatinine)",
+    price: "50 ر.س",
+    icon: <TestTube className="h-8 w-8 text-blue-500" />,
+  },
+  {
+    name: "ملف الدهون (Lipid Profile)",
+    price: "150 ر.س",
+    icon: <Heart className="h-8 w-8 text-rose-500" />,
+  },
+];
+
+export default function LabServicesPage() {
+  const whatsappLink = "https://wa.me/201211886649";
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePrescriptionRequest = () => {
+    const message = `أرغب في الاستفسار عن تحليل طبي من خلال روشتة مرفقة.`;
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`${whatsappLink}?text=${encodedMessage}`, '_blank');
+  }
+
+  const handleTestRequest = (testName: string) => {
+    const message = `أرغب في حجز موعد لعمل "${testName}" في المنزل.`;
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`${whatsappLink}?text=${encodedMessage}`, '_blank');
+  }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        toast({ title: "تم اختيار الملف", description: `تم اختيار ملف ${file.name}. سيتم إرساله عبر واتساب.` });
+        handlePrescriptionRequest();
+    }
+  };
+
+  return (
+    <div className="bg-background text-foreground">
+      <header className="bg-primary/5 py-20">
+        <div className="container mx-auto px-4 text-center">
+          <Badge variant="outline" className="mb-4 bg-accent border-transparent text-primary font-semibold">
+            التحاليل المخبرية المنزلية
+          </Badge>
+          <h1 className="text-4xl md:text-6xl font-bold font-headline text-primary">
+            دقتنا في التحليل، راحتك هي الأساس
+          </h1>
+          <p className="mt-6 text-lg md:text-xl max-w-3xl mx-auto text-muted-foreground">
+            اطلب تحاليلك الطبية بسهولة، وسحب العينات يتم في منزلك. دقة، سرعة، وراحة تامة.
+          </p>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-16 md:py-24 space-y-20">
+        
+        <section>
+          <Card className="w-full max-w-4xl mx-auto overflow-hidden shadow-lg border-t-4 border-primary">
+            <CardHeader className="p-6 text-center">
+                <CardTitle className="text-2xl text-primary font-headline">اطلب تحليلاً عبر الروشتة</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                    صوّر أو ارفع روشتة التحاليل، وسنتواصل معك فوراً بالسعر والموعد.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 md:p-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div className="flex flex-col gap-4">
+                         <Button variant="outline" className="h-24 flex-col gap-2 text-lg" onClick={() => fileInputRef.current?.click()}>
+                            <Upload className="h-8 w-8" />
+                            <span>ارفع صورة الروشتة</span>
+                             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,.pdf"/>
+                        </Button>
+                         <Textarea placeholder="أو اكتب أسماء التحاليل المطلوبة هنا..." className="min-h-[108px] text-base"/>
+                    </div>
+                    <div className="flex flex-col items-center justify-center text-center gap-4">
+                        <p className="text-muted-foreground">سيتم تحويلك إلى واتساب لاستكمال الطلب مع المختص.</p>
+                        <Button asChild size="lg" className="w-full text-lg">
+                            <Link href={`${whatsappLink}?text=${encodeURIComponent("أرغب في طلب تحليل عبر الواتساب")}`} target="_blank">
+                                <Bot className="ml-2 h-6 w-6" />
+                                تواصل وابدأ الطلب
+                            </Link>
+                        </Button>
+                    </div>
+                </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section>
+            <div className="text-center mb-12">
+                 <h2 className="text-3xl font-bold text-foreground">التحاليل الأكثر طلباً</h2>
+                 <p className="text-muted-foreground mt-2">اختر التحليل المطلوب لطلبه مباشرة.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {commonTests.map((test) => (
+                <Card key={test.name} className="overflow-hidden group flex flex-col">
+                    <CardHeader className="flex flex-col items-center text-center p-6">
+                        <div className="p-4 bg-accent rounded-full mb-4">
+                            {test.icon}
+                        </div>
+                        <CardTitle className="text-lg font-semibold h-12">{test.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 pt-0 flex-grow text-center">
+                         <p className="text-primary font-bold text-2xl">{test.price}</p>
+                    </CardContent>
+                  <CardFooter className="p-4 pt-0">
+                    <Button className="w-full" variant="secondary" onClick={() => handleTestRequest(test.name)}>
+                      اطلب هذا التحليل
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+        </section>
+      </main>
+    </div>
+  );
+}
