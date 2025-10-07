@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ShieldAlert, Package, Stethoscope, Settings } from 'lucide-react';
+import { Loader2, ShieldAlert, Package, Stethoscope, Settings, HeartPulse, ShieldPlus } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminDashboardPage() {
@@ -80,7 +80,39 @@ export default function AdminDashboardPage() {
             <CardDescription>
               التحكم في قائمة الأطباء وبياناتهم وأسعار الكشوفات.
             </CardDescription>
-            <Button variant="secondary" className="mt-4" disabled>قريباً</Button>
+            <Button asChild className="mt-4">
+              <Link href="/admin/doctors">إدارة الأطباء</Link>
+            </Button>
+          </CardContent>
+        </Card>
+        
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-lg font-medium">العلاج الطبيعي</CardTitle>
+            <HeartPulse className="h-6 w-6 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <CardDescription>
+              إدارة باقات وخدمات العلاج الطبيعي المنزلي.
+            </CardDescription>
+            <Button asChild className="mt-4">
+                <Link href="/admin/physiotherapy">إدارة العلاج الطبيعي</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-lg font-medium">الرعاية التمريضية</CardTitle>
+            <ShieldPlus className="h-6 w-6 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <CardDescription>
+              إدارة باقات الرعاية التمريضية المنزلية.
+            </CardDescription>
+            <Button asChild className="mt-4">
+                <Link href="/admin/nursing">إدارة التمريض</Link>
+            </Button>
           </CardContent>
         </Card>
 
