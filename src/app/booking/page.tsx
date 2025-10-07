@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import { useEffect, useState, Suspense } from 'react';
@@ -55,13 +56,11 @@ function BookingFlow() {
         if (doctorData) {
             try {
                 const parsedDoctor = JSON.parse(decodeURIComponent(doctorData));
-                // Only update state if doctor data is different
                 if (JSON.stringify(parsedDoctor) !== JSON.stringify(doctor)) {
                     setDoctor(parsedDoctor);
                 }
             } catch (e) {
                 console.error("Failed to parse doctor data", e);
-                // Handle error, maybe redirect or show a message
             }
         }
     }, [searchParams, doctor]);
@@ -95,10 +94,15 @@ function BookingFlow() {
             appointmentTime: selectedTime,
             paymentMethod: paymentMethod,
             status: 'confirmed',
+            createdAt: new Date().toISOString(),
         };
 
-        const bookingRef = doc(firestore, "users", user.uid, "bookings", bookingId);
-        setDocumentNonBlocking(bookingRef, bookingDetails, { merge: true });
+        const userBookingRef = doc(firestore, "users", user.uid, "bookings", bookingId);
+        setDocumentNonBlocking(userBookingRef, bookingDetails, { merge: true });
+
+        const adminBookingRef = doc(firestore, "bookings", bookingId);
+        setDocumentNonBlocking(adminBookingRef, bookingDetails, { merge: true });
+
 
         // Simulate API call
         setTimeout(() => {
@@ -274,5 +278,3 @@ export default function BookingPage() {
         </Suspense>
     )
 }
-
-    

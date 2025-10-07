@@ -284,7 +284,7 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profiles.  Secured by user ID.",
+          "description": "Stores user profiles. Secured by user ID.",
           "params": [
             {
               "name": "userId",
@@ -412,8 +412,24 @@
             }
           ]
         }
+      },
+       {
+        "path": "/bookings/{bookingId}",
+        "definition": {
+          "entityName": "Booking",
+          "schema": {
+            "$ref": "#/backend/entities/Booking"
+          },
+          "description": "A global collection of all bookings, intended for admin access.",
+          "params": [
+            {
+              "name": "bookingId",
+              "description": "The unique identifier for the booking."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the Sehaty application's features, focusing on user-specific data and shared resources. User-specific data such as bookings are stored under the `/users/{userId}` path to ensure clear ownership and straightforward security rules. The structure employs path-based ownership for `bookings` to easily manage user-specific data.  Authorization independence is achieved by not relying on `get()` calls in security rules.\n\n*   **/users/{userId}:**  Stores user profiles. Bookings are placed as subcollections to establish ownership.\n*   **/pharmacies:** Stores information about pharmacies available in the app.\n*   **/physiotherapyPackages:**  Stores available physiotherapy packages.\n*   **/nursingCareServices:** Stores nursing care services information.\n*   **/labServices:** Stores available lab services.\n*   **/clinics:** Stores clinic information.\n*   **/clinics/{clinicId}/doctors:** Doctors are stored as a subcollection of clinics to indicate clinic affiliation.\n\nThis structure facilitates secure list operations (QAPs) by segregating data based on ownership and service type.  It avoids mixing data with different access needs within the same collection.  The use of hierarchical paths for user-owned data (e.g., `/users/{userId}/bookings/{bookingId}`) simplifies security rules based on user ID."
+    "reasoning": "The Firestore structure is designed to support the Sehaty application's features, focusing on user-specific data and shared resources. User-specific data such as bookings are stored under the `/users/{userId}` path to ensure clear ownership and straightforward security rules. A global `/bookings` collection is added for admin-level access to all bookings. The structure employs path-based ownership for `bookings` to easily manage user-specific data.  Authorization independence is achieved by not relying on `get()` calls in security rules.\n\n*   **/users/{userId}:**  Stores user profiles. Bookings are placed as subcollections to establish ownership.\n*   **/pharmacies:** Stores information about pharmacies available in the app.\n*   **/physiotherapyPackages:**  Stores available physiotherapy packages.\n*   **/nursingCareServices:** Stores nursing care services information.\n*   **/labServices:** Stores available lab services.\n*   **/clinics:** Stores clinic information.\n*   **/clinics/{clinicId}/doctors:** Doctors are stored as a subcollection of clinics to indicate clinic affiliation.\n*   **/bookings:** A global collection of all bookings for admin oversight.\n\nThis structure facilitates secure list operations (QAPs) by segregating data based on ownership and service type.  It avoids mixing data with different access needs within the same collection.  The use of hierarchical paths for user-owned data (e.g., `/users/{userId}/bookings/{bookingId}`) simplifies security rules based on user ID."
   }
 }
