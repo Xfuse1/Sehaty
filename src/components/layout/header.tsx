@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { StethoscopeIcon, LogOut, Loader2, Menu, Languages, Phone } from 'lucide-react';
+import { StethoscopeIcon, LogOut, Loader2, Menu, Languages, UserCircle } from 'lucide-react';
 import { useUser, useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import {
@@ -23,10 +23,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 const navLinks = [
     { href: "/", label: "الرئيسية" },
-    { href: "#", label: "عنّا" },
+    { href: "#", label: "السجلات" },
     { href: "#services", label: "الخدمات" },
-    { href: "#", label: "الأسئلة الشائعة" },
-    { href: "#", label: "تواصل" },
+    { href: "#", label: "المواعيد" },
 ];
 
 export default function Header() {
@@ -51,16 +50,17 @@ export default function Header() {
   const userMenu = (
       <>
         {isUserLoading ? (
-             <Loader2 className="h-6 w-6 animate-spin text-foreground" />
+             <Loader2 className="h-6 w-6 animate-spin text-primary-foreground" />
         ) : user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <Avatar className="h-10 w-10 border-2 border-border">
+                <div className="flex items-center gap-2 cursor-pointer">
+                  <span className="font-semibold text-primary-foreground hidden sm:inline">مرحباً، {user.displayName || 'زائر'}</span>
+                  <Avatar className="h-9 w-9 border-2 border-border">
                     <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || ''} />
-                    <AvatarFallback className="bg-muted text-foreground font-bold">{getInitials(user.displayName)}</AvatarFallback>
+                    <AvatarFallback className="bg-primary-foreground text-primary font-bold">{getInitials(user.displayName)}</AvatarFallback>
                   </Avatar>
-                </Button>
+                </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
@@ -84,11 +84,20 @@ export default function Header() {
             </DropdownMenu>
         ) : (
             <div className="flex items-center gap-2">
-              <Button asChild variant="ghost">
-                <Link href="/login">تسجيل الدخول</Link>
-              </Button>
+               <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                   <Button variant="ghost" className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground">
+                      <Languages className="ml-2 h-5 w-5" />
+                      English
+                   </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem>العربية</DropdownMenuItem>
+                  <DropdownMenuItem>English</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button asChild>
-                <Link href="/signup">إنشاء حساب</Link>
+                <Link href="/login">تسجيل الدخول</Link>
               </Button>
             </div>
         )}
@@ -96,42 +105,42 @@ export default function Header() {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-20 items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b bg-primary text-primary-foreground">
+      <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2">
-                <StethoscopeIcon className="h-8 w-8 text-primary" />
-                <span className="font-bold font-headline text-2xl text-foreground">صحتي</span>
+            <Link href="/" className="hidden md:flex items-center gap-2">
+                <span className="font-bold text-xl">صحتي</span>
+                <Avatar className="h-9 w-9">
+                  <AvatarFallback className="bg-primary-foreground text-primary"><UserCircle /></AvatarFallback>
+                </Avatar>
             </Link>
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="hidden md:flex items-center gap-4">
                 {navLinks.map(link => (
-                    <Link key={link.href} href={link.href} className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">{link.label}</Link>
+                    <Link key={link.href} href={link.href} className="text-sm font-medium transition-colors hover:text-white/80">{link.label}</Link>
                 ))}
             </nav>
         </div>
 
         <div className="hidden md:flex items-center gap-2">
-          <Button variant="ghost" size="icon"><Languages className="h-5 w-5 text-muted-foreground" /></Button>
-          <Button variant="ghost" size="icon"><Phone className="h-5 w-5 text-muted-foreground" /></Button>
           {userMenu}
         </div>
         
-        <div className="md:hidden flex items-center">
-            {userMenu}
-            <Sheet>
-                <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                        <Menu className="h-6 w-6" />
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="right">
-                    <nav className="flex flex-col gap-6 text-lg font-medium mt-10">
-                        {navLinks.map(link => (
-                            <Link key={link.href} href={link.href} className="text-muted-foreground hover:text-foreground">{link.label}</Link>
-                        ))}
-                    </nav>
-                </SheetContent>
-            </Sheet>
+        <div className="md:hidden flex items-center flex-1 justify-between">
+          <Sheet>
+              <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="hover:bg-white/10">
+                      <Menu className="h-6 w-6" />
+                  </Button>
+              </SheetTrigger>
+              <SheetContent side="right">
+                  <nav className="flex flex-col gap-6 text-lg font-medium mt-10">
+                      {navLinks.map(link => (
+                          <Link key={link.href} href={link.href} className="text-muted-foreground hover:text-foreground">{link.label}</Link>
+                      ))}
+                  </nav>
+              </SheetContent>
+          </Sheet>
+          {userMenu}
         </div>
       </div>
     </header>
