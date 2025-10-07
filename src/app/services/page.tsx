@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Stethoscope, FlaskConical, TestTube, Ambulance, Laptop, FileText, Bot, Tag } from "lucide-react";
+import { ArrowLeft, Stethoscope, FlaskConical, TestTube, Ambulance, Laptop, FileText, Bot, Tag, HeartPulse, Building } from "lucide-react";
 import Link from "next/link";
 
 const allServices = [
@@ -8,49 +8,49 @@ const allServices = [
     icon: <Stethoscope className="h-8 w-8 text-primary" />,
     title: 'العيادات المتخصصة',
     description: 'تصفح التخصصات الطبية واختر من بين نخبة الأطباء المعتمدين.',
-    href: '#',
+    href: '/specialized-clinics',
   },
   {
     icon: <FlaskConical className="h-8 w-8 text-primary" />,
     title: 'الصيدلية',
     description: 'اطلب أدويتك ومستلزماتك الطبية بسهولة لتصلك أينما كنت.',
-    href: '#',
+    href: '/pharmacy',
   },
   {
     icon: <TestTube className="h-8 w-8 text-primary" />,
-    title: 'المعمل والتحاليل',
+    title: 'التحاليل المخبرية',
     description: 'احجز زيارة لسحب العينات واحصل على نتائج تحاليلك بشكل رقمي.',
-    href: '#',
-  },
-  {
-    icon: <Laptop className="h-8 w-8 text-primary" />,
-    title: 'الاستشارات عن بعد',
-    description: 'تحدث مع طبيب عبر الفيديو للحصول على استشارة فورية وأنت في منزلك.',
-    href: '#',
-  },
-  {
-    icon: <FileText className="h-8 w-8 text-primary" />,
-    title: 'السجلات الطبية',
-    description: 'احتفظ بسجلك الطبي كاملاً في مكان واحد آمن وسهل الوصول.',
-    href: '#',
-  },
-  {
-    icon: <Tag className="h-8 w-8 text-primary" />,
-    title: 'العروض والباقات',
-    description: 'استفد من باقات الفحص الشامل والعروض الموسمية بأسعار تنافسية.',
-    href: '#',
+    href: '/lab-services',
   },
   {
     icon: <Ambulance className="h-8 w-8 text-primary" />,
-    title: 'الطوارئ والدعم',
-    description: 'وصول سريع لخدمات الطوارئ ودعم فني على مدار الساعة لمساعدتك.',
-    href: '#',
+    title: 'الكشف المنزلي',
+    description: 'زيارات طبية منزلية للحالات غير الطارئة وتوصيات للمتابعة.',
+    href: '/home-visit',
+  },
+    {
+    icon: <HeartPulse className="h-8 w-8 text-primary" />,
+    title: 'الرعاية التمريضية',
+    description: 'خدمات تمريض منزلية احترافية لرعاية كبار السن وما بعد العمليات.',
+    href: '/nursing-care',
   },
   {
     icon: <Bot className="h-8 w-8 text-primary" />,
-    title: 'مساعد صحتي الذكي',
-    description: 'احصل على إجابات لأسئلتك الصحية من مساعدنا الذكي المتاح دائما.',
-    href: '#',
+    title: 'العلاج الطبيعي',
+    description: 'جلسات علاج طبيعي منزلية لمساعدتك على التعافي واستعادة الحركة.',
+    href: '/physiotherapy',
+  },
+   {
+    icon: <FileText className="h-8 w-8 text-primary" />,
+    title: 'العمليات الجراحية',
+    description: 'استشارات متخصصة وترتيبات لأشهر العمليات الجراحية والتجميلية.',
+    href: '/surgery',
+  },
+  {
+    icon: <Building className="h-8 w-8 text-primary" />,
+    title: 'دليل الأطباء',
+    description: 'ابحث عن معلومات التواصل مع الأطباء والصيدليات في منطقتك.',
+    href: '/doctors-directory',
   },
 ];
 

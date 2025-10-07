@@ -7,7 +7,7 @@ import { useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Stethoscope, FlaskConical, HeartPulse, TestTube, ArrowLeft } from "lucide-react"
+import { Stethoscope, FlaskConical, HeartPulse, TestTube, ArrowLeft, Ambulance, Building } from "lucide-react"
 import Image from "next/image"
 
 const services = [
@@ -43,6 +43,22 @@ const services = [
         imgSrc: 'https://picsum.photos/seed/lab/600/400',
         imgHint: 'laboratory analysis microscope',
       },
+      {
+        icon: <Ambulance className="h-10 w-10 text-primary" />,
+        title: 'الكشف المنزلي',
+        description: 'اطلب زيارة طبيب إلى منزلك للحالات غير الطارئة.',
+        href: '/home-visit',
+        imgSrc: 'https://picsum.photos/seed/homevisit/600/400',
+        imgHint: 'doctor home visit',
+      },
+      {
+        icon: <Building className="h-10 w-10 text-primary" />,
+        title: 'دليل الأطباء',
+        description: 'ابحث عن معلومات التواصل مع الأطباء والصيدليات.',
+        href: '/doctors-directory',
+        imgSrc: 'https://picsum.photos/seed/directory/600/400',
+        imgHint: 'medical directory book',
+      }
 ]
 
 export default function NewBookingPage() {
@@ -72,7 +88,7 @@ export default function NewBookingPage() {
         </p>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {services.map(service => (
             <Link href={service.href} key={service.title} className="group block">
                  <Card className="h-full bg-card rounded-xl border overflow-hidden transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1">

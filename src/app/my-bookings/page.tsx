@@ -30,8 +30,8 @@ export default function MyBookingsPage() {
 
   const { data: bookings, isLoading: bookingsLoading } = useCollection(bookingsQuery);
 
-  const upcomingBookings = bookings?.filter(b => new Date(b.appointmentDate) >= new Date()) || [];
-  const pastBookings = bookings?.filter(b => new Date(b.appointmentDate) < new Date()) || [];
+  const upcomingBookings = bookings?.filter(b => b.appointmentDate && new Date(b.appointmentDate) >= new Date()) || [];
+  const pastBookings = bookings?.filter(b => b.appointmentDate && new Date(b.appointmentDate) < new Date()) || [];
 
   if (isUserLoading) {
     return (
@@ -69,11 +69,11 @@ export default function MyBookingsPage() {
                         <CardHeader>
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <CardTitle className="text-xl">{booking.doctorName}</CardTitle>
-                                    <CardDescription>{booking.doctorSpecialty}</CardDescription>
+                                    <CardTitle className="text-xl">{booking.doctorName || booking.packageName}</CardTitle>
+                                    <CardDescription>{booking.doctorSpecialty || booking.serviceType}</CardDescription>
                                 </div>
                                 <Badge variant={booking.status === 'confirmed' ? 'default' : 'secondary'} className="bg-green-100 text-green-800 border-green-200">
-                                    {booking.status === 'confirmed' ? 'مؤكد' : booking.status}
+                                    {booking.status === 'confirmed' ? 'مؤكد' : 'قيد التأكيد'}
                                 </Badge>
                             </div>
                         </CardHeader>
@@ -81,12 +81,12 @@ export default function MyBookingsPage() {
                              <div className="flex items-center gap-3">
                                 <Calendar className="h-5 w-5 text-primary" />
                                 <span className="font-semibold">التاريخ:</span>
-                                <span className="text-muted-foreground">{new Date(booking.appointmentDate).toLocaleDateString('ar-EG')}</span>
+                                <span className="text-muted-foreground">{booking.appointmentDate ? new Date(booking.appointmentDate).toLocaleDateString('ar-EG') : 'سيتم تحديده'}</span>
                             </div>
                              <div className="flex items-center gap-3">
                                 <Clock className="h-5 w-5 text-primary" />
                                 <span className="font-semibold">الوقت:</span>
-                                <span className="text-muted-foreground">{booking.appointmentTime}</span>
+                                <span className="text-muted-foreground">{booking.appointmentTime || 'سيتم تحديده'}</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <User className="h-5 w-5 text-primary" />
@@ -122,8 +122,8 @@ export default function MyBookingsPage() {
                         <CardHeader>
                              <div className="flex justify-between items-start">
                                 <div>
-                                    <CardTitle className="text-xl text-muted-foreground">{booking.doctorName}</CardTitle>
-                                    <CardDescription>{booking.doctorSpecialty}</CardDescription>
+                                    <CardTitle className="text-xl text-muted-foreground">{booking.doctorName || booking.packageName}</CardTitle>
+                                    <CardDescription>{booking.doctorSpecialty || booking.serviceType}</CardDescription>
                                 </div>
                                 <Badge variant="outline">مكتمل</Badge>
                             </div>
@@ -132,12 +132,12 @@ export default function MyBookingsPage() {
                              <div className="flex items-center gap-3">
                                 <Calendar className="h-5 w-5 text-muted-foreground" />
                                 <span className="font-semibold">التاريخ:</span>
-                                <span className="text-muted-foreground">{new Date(booking.appointmentDate).toLocaleDateString('ar-EG')}</span>
+                                <span className="text-muted-foreground">{booking.appointmentDate ? new Date(booking.appointmentDate).toLocaleDateString('ar-EG') : 'غير محدد'}</span>
                             </div>
                              <div className="flex items-center gap-3">
                                 <Clock className="h-5 w-5 text-muted-foreground" />
                                 <span className="font-semibold">الوقت:</span>
-                                <span className="text-muted-foreground">{booking.appointmentTime}</span>
+                                <span className="text-muted-foreground">{booking.appointmentTime || 'غير محدد'}</span>
                             </div>
                         </CardContent>
                     </Card>
