@@ -33,7 +33,7 @@ const services = [
     title: 'التحاليل المخبرية',
     description: 'حجز زيارات لسحب العينات، نتائج رقمية، وتفسير للنتائج.',
     href: '/lab-services',
-    imgSrc: 'https://picsum.photos/seed/lab/600/400',
+    imgSrc: 'https://media.istockphoto.com/id/2178146294/photo/health-engineer-bioprinting-models-at-a-3d-laboratory.jpg?s=612x612&w=0&k=20&c=Qm2_TwjhuCaMegVVEVPZ-opa6susessdOCZTh4ed5II=',
     imgHint: 'laboratory analysis microscope',
   },
   {
