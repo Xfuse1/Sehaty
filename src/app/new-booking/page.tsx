@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useUser } from "@/firebase"
@@ -30,7 +31,7 @@ const services = [
         icon: <FlaskConical className="h-10 w-10 text-primary" />,
         title: 'الرعاية التمريضية',
         description: 'اطلب خدمات تمريضية منزلية احترافية لرعاية أحبائك.',
-        href: '#',
+        href: '/nursing-care',
         imgSrc: 'https://picsum.photos/seed/nursing/600/400',
         imgHint: 'nurse home care',
       },

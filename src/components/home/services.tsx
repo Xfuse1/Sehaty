@@ -39,7 +39,7 @@ const services = [
   {
     title: 'الرعاية التمريضية المنزلية',
     description: 'حجز جلسات تمريض منزلية، ومتابعة الحالات المزمنة ورعاية ما بعد العمليات.',
-    href: '#',
+    href: '/nursing-care',
     imgSrc: 'https://picsum.photos/seed/nursing/600/400',
     imgHint: 'nurse home care',
   },
