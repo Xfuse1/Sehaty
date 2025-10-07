@@ -33,9 +33,7 @@ const navLinks = [
 const Logo = () => (
     <div className="flex items-center gap-2">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary-foreground">
-          <path d="M18 8.15C18 5.14 15.3 2 12 2C8.7 2 6 5.14 6 8.15V10.5C6 11.33 6.67 12 7.5 12H8V14.32C8 15.79 8.84 17.03 10.05 17.65L10.5 17.89C11.39 18.33 12.61 18.33 13.5 17.89L13.95 17.65C15.16 17.03 16 15.79 16 14.32V12H16.5C17.33 12 18 11.33 18 10.5V8.15Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M10.05 17.65C9.55836 18.7753 8.52843 19.6487 7.25 20.06C5.97157 20.4713 4.59164 20.3753 3.42 19.8C2.24836 19.2247 1.40843 18.1947 1.05 16.94C0.691572 15.6853 0.831641 14.3353 1.45 13.19C2.43 11.4 4.08 10.52 6 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M13.95 17.65C14.4416 18.7753 15.4716 19.6487 16.75 20.06C18.0284 20.4713 19.4084 20.3753 20.58 19.8C21.7516 19.2247 22.5916 18.1947 22.95 16.94C23.3084 15.6853 23.1684 14.3353 22.55 13.19C21.57 11.4 19.92 10.52 18 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <path fillRule="evenodd" clipRule="evenodd" d="M0 0H24V24H0V0ZM12 21.35L10.55 20.03C5.4 15.36 2 12.27 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.27 18.6 15.36 13.45 20.03L12 21.35Z" fill="currentColor"/>
         </svg>
         <span className="font-bold text-xl">صحتي</span>
     </div>
@@ -142,9 +140,7 @@ export default function Header() {
               <SheetContent side="right">
                   <Link href="/" className="flex items-center gap-2 mb-8">
                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
-                        <path d="M18 8.15C18 5.14 15.3 2 12 2C8.7 2 6 5.14 6 8.15V10.5C6 11.33 6.67 12 7.5 12H8V14.32C8 15.79 8.84 17.03 10.05 17.65L10.5 17.89C11.39 18.33 12.61 18.33 13.5 17.89L13.95 17.65C15.16 17.03 16 15.79 16 14.32V12H16.5C17.33 12 18 11.33 18 10.5V8.15Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M10.05 17.65C9.55836 18.7753 8.52843 19.6487 7.25 20.06C5.97157 20.4713 4.59164 20.3753 3.42 19.8C2.24836 19.2247 1.40843 18.1947 1.05 16.94C0.691572 15.6853 0.831641 14.3353 1.45 13.19C2.43 11.4 4.08 10.52 6 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M13.95 17.65C14.4416 18.7753 15.4716 19.6487 16.75 20.06C18.0284 20.4713 19.4084 20.3753 20.58 19.8C21.7516 19.2247 22.5916 18.1947 22.95 16.94C23.3084 15.6853 23.1684 14.3353 22.55 13.19C21.57 11.4 19.92 10.52 18 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path fillRule="evenodd" clipRule="evenodd" d="M0 0H24V24H0V0ZM12 21.35L10.55 20.03C5.4 15.36 2 12.27 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.27 18.6 15.36 13.45 20.03L12 21.35Z" fill="currentColor"/>
                     </svg>
                      <span className="font-bold text-xl text-foreground">صحتي</span>
                   </Link>
