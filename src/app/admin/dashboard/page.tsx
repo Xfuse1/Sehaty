@@ -58,21 +58,6 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg font-medium">إدارة العروض</CardTitle>
-            <Package className="h-6 w-6 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <CardDescription>
-              إضافة وتعديل وحذف عروض الصيدلية التي تظهر في الصفحة الرئيسية.
-            </CardDescription>
-            <Button asChild className="mt-4">
-              <Link href="/admin/offers">إدارة العروض</Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg font-medium">إدارة الأطباء</CardTitle>
             <Stethoscope className="h-6 w-6 text-muted-foreground" />
           </CardHeader>
