@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ShieldAlert, Package, Stethoscope, Settings, HeartPulse, ShieldPlus } from 'lucide-react';
+import { Loader2, ShieldAlert, Package, Stethoscope, Settings, HeartPulse, ShieldPlus, TestTube, CalendarCheck } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminDashboardPage() {
@@ -58,6 +58,21 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-lg font-medium">إدارة الحجوزات</CardTitle>
+            <CalendarCheck className="h-6 w-6 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <CardDescription>
+              عرض ومتابعة جميع الحجوزات الجديدة والقادمة.
+            </CardDescription>
+            <Button asChild className="mt-4">
+              <Link href="/admin/bookings">إدارة الحجوزات</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg font-medium">إدارة الأطباء</CardTitle>
             <Stethoscope className="h-6 w-6 text-muted-foreground" />
           </CardHeader>
@@ -97,6 +112,21 @@ export default function AdminDashboardPage() {
             </CardDescription>
             <Button asChild className="mt-4">
                 <Link href="/admin/nursing">إدارة التمريض</Link>
+            </Button>
+          </CardContent>
+        </Card>
+        
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-lg font-medium">التحاليل المخبرية</CardTitle>
+            <TestTube className="h-6 w-6 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <CardDescription>
+             إدارة قائمة التحاليل المتاحة في التطبيق وأسعارها.
+            </CardDescription>
+            <Button asChild className="mt-4">
+                <Link href="/admin/lab-tests">إدارة التحاليل</Link>
             </Button>
           </CardContent>
         </Card>
