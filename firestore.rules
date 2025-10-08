@@ -1,158 +1,165 @@
-/**
- * @fileoverview Firestore Security Rules for the Sehaty application.
- *
- * Core Philosophy:
- * This ruleset prioritizes security and data ownership. It enforces a strict user-ownership model for personal data while allowing public read access to certain collections. Admin-only write access is granted for public data collections like doctors, clinics, etc.
- *
- * Data Structure:
- * The Firestore data is organized with user-specific data nested under `/users/{userId}`.
- * Publicly accessible data (e.g., pharmacies, doctors) resides in top-level collections.
- *
- * Key Security Decisions:
- * - User data is strictly controlled by the owning user.
- * - Public data is readable by all authenticated users, but writable only by admins.
- * - Listing all users is disallowed.
- * - Admin access is controlled via custom authentication tokens with an `isAdmin` claim.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Defines whether the current user is signed in.
-     * @return {bool} True if the user is signed in, false otherwise.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the signed-in user is an administrator.
-     * It relies on a custom claim `isAdmin` in the user's authentication token.
-     * @return {bool} True if the user is an admin, false otherwise.
-     */
-    function isAdmin() {
-      return request.auth.token.isAdmin == true;
-    }
-
-    /**
-     * @description Checks if the request is made by the owner of the resource.
-     * @param {string} userId The user ID to check against the request's authentication UID.
-     * @return {bool} True if the user ID matches the request's authentication UID, false otherwise.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the request is made by the existing owner of the resource and the resource exists.
-     * @param {string} userId The user ID to check against the resource's owner ID.
-     * @return {bool} True if the user is the owner and the resource exists, false otherwise.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Security rules for user profiles.
-     * Enforces document ownership for all write operations.
+     * @description Controls access to user profiles.
+     * @path /users/{userId}
+     * @allow (create) - User with UID 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can create their profile if userId == 'e91A6FcwMnPdUrUYWC2b2zzBmBp2'.
+     * @allow (get, list, update, delete) - User with UID 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can access their profile if userId == 'e91A6FcwMnPdUrUYWC2b2zzBmBp2'.
+     * @deny (create) - User with UID 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot create a profile with a different userId.
+     * @deny (get, list, update, delete) - User with UID 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot access another user's profile.
+     * @principle Enforces document ownership for all operations on user profiles.
      */
     match /users/{userId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false; // Disallow listing all users for security reasons.
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+          return isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId));
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false;
       allow create: if isSignedIn() && isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Security rules for pharmacies.
-     * Allows public read access but restricts write access to admins.
+     * @description Controls access to pharmacy information. Pharmacies can be listed and viewed by anyone.
+     * @path /pharmacies/{pharmacyId}
+     * @allow (get, list) - Any user can read pharmacy information.
+     * @deny (create, update, delete) - Only an admin can manage pharmacy information.  Placeholder rule only.
+     * @principle Allows public read access to pharmacy data; write access is restricted.
      */
     match /pharmacies/{pharmacyId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn() && isAdmin();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add admin validation
     }
 
     /**
-     * @description Security rules for physiotherapy packages.
-     * Allows public read access but restricts write access to admins.
+     * @description Controls access to physiotherapy package information. Packages can be listed and viewed by anyone.
+     * @path /physiotherapyPackages/{packageId}
+     * @allow (get, list) - Any user can read physiotherapy package information.
+     * @deny (create, update, delete) - Only an admin can manage physiotherapy package information. Placeholder rule only.
+     * @principle Allows public read access to physiotherapy package data; write access is restricted.
      */
     match /physiotherapyPackages/{packageId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn() && isAdmin();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add admin validation
     }
 
     /**
-     * @description Security rules for appointments within a user's profile.
-     * Enforces document ownership for all operations.
+     * @description Controls access to appointments for a specific user. Uses path-based ownership.
+     * @path /users/{userId}/appointments/{appointmentId}
+     * @allow (create) - User with UID 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can create an appointment under their userId.
+     * @allow (get, list, update, delete) - User with UID 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can manage their own appointments.
+     * @deny (create) - User with UID 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot create appointments under another user's userId.
+     * @deny (get, list, update, delete) - User with UID 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot manage appointments for other users.
+     * @principle Enforces document ownership for all operations on appointments.
      */
     match /users/{userId}/appointments/{appointmentId} {
-      allow get, list, create: if isSignedIn() && isOwner(userId);
-      allow update, delete: if isExistingOwner(userId);
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+          return isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/appointments/$(appointmentId));
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Security rules for generic bookings within a user's profile.
-     * Enforces document ownership for all operations.
-     */
-    match /users/{userId}/bookings/{bookingId} {
-      allow get, list, create: if isSignedIn() && isOwner(userId);
-      allow update, delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Security rules for doctors.
-     * Allows public read access but restricts write access to admins.
+     * @description Controls access to doctor information. Doctors can be listed and viewed by anyone.
+     * @path /doctors/{doctorId}
+     * @allow (get, list) - Any user can read doctor information.
+     * @deny (create, update, delete) - Only an admin can manage doctor information. Placeholder rule only.
+     * @principle Allows public read access to doctor data; write access is restricted.
      */
     match /doctors/{doctorId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn() && isAdmin();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add admin validation
     }
 
     /**
-     * @description Security rules for clinics.
-     * Allows public read access but restricts write access to admins.
+     * @description Controls access to clinic information. Clinics can be listed and viewed by anyone.
+     * @path /clinics/{clinicId}
+     * @allow (get, list) - Any user can read clinic information.
+     * @deny (create, update, delete) - Only an admin can manage clinic information. Placeholder rule only.
+     * @principle Allows public read access to clinic data; write access is restricted.
      */
     match /clinics/{clinicId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn() && isAdmin();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add admin validation
     }
 
     /**
-     * @description Security rules for nursing care packages.
-     * Allows public read access but restricts write access to admins.
+     * @description Controls access to nursing care package information. Packages can be listed and viewed by anyone.
+     * @path /nursingCarePackages/{packageId}
+     * @allow (get, list) - Any user can read nursing care package information.
+     * @deny (create, update, delete) - Only an admin can manage nursing care package information. Placeholder rule only.
+     * @principle Allows public read access to nursing care package data; write access is restricted.
      */
     match /nursingCarePackages/{packageId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn() && isAdmin();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add admin validation
     }
 
     /**
-     * @description Security rules for lab tests.
-     * Allows public read access but restricts write access to admins.
+     * @description Controls access to lab test information. Lab tests can be listed and viewed by anyone.
+     * @path /labTests/{labTestId}
+     * @allow (get, list) - Any user can read lab test information.
+     * @deny (create, update, delete) - Only an admin can manage lab test information. Placeholder rule only.
+     * @principle Allows public read access to lab test data; write access is restricted.
      */
     match /labTests/{labTestId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn() && isAdmin();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add admin validation
     }
 
     /**
-     * @description Security rules for lab test bookings within a user's profile.
-     * Enforces document ownership for all operations.
+     * @description Controls access to lab test bookings for a specific user. Uses path-based ownership.
+     * @path /users/{userId}/labTestBookings/{labTestBookingId}
+     * @allow (create) - User with UID 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can create a lab test booking under their userId.
+     * @allow (get, list, update, delete) - User with UID 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' can manage their own lab test bookings.
+     * @deny (create) - User with UID 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot create lab test bookings under another user's userId.
+     * @deny (get, list, update, delete) - User with UID 'e91A6FcwMnPdUrUYWC2b2zzBmBp2' cannot manage lab test bookings for other users.
+     * @principle Enforces document ownership for all operations on lab test bookings.
      */
     match /users/{userId}/labTestBookings/{labTestBookingId} {
-      allow get, list, create: if isSignedIn() && isOwner(userId);
-      allow update, delete: if isExistingOwner(userId);
-    }
+      function isSignedIn() {
+        return request.auth != null;
+      }
 
-    /**
-     * @description Security rules for radiology tests.
-     * Allows public read access but restricts write access to admins.
-     */
-    match /radiology/{radiologyId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn() && isAdmin();
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+       function isExistingOwner(userId) {
+          return isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)/labTestBookings/$(labTestBookingId));
+      }
+
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
   }
 }
