@@ -2,7 +2,7 @@
  * @fileoverview Firestore Security Rules for the Sehaty application.
  *
  * Core Philosophy:
- * This ruleset prioritizes security and data ownership. It enforces a strict user-ownership model for personal data while allowing public read access to certain collections like pharmacies, physiotherapy packages, doctors, clinics, nursing care packages and lab tests. All write operations are restricted based on authentication and authorization checks.
+ * This ruleset prioritizes security and data ownership. It enforces a strict user-ownership model for personal data while allowing public read access to certain collections. Admin-only write access is granted for public data collections like doctors, clinics, etc.
  *
  * Data Structure:
  * The Firestore data is organized with user-specific data nested under `/users/{userId}`.
@@ -10,12 +10,9 @@
  *
  * Key Security Decisions:
  * - User data is strictly controlled by the owning user.
- * - Public data is readable by all authenticated users.
+ * - Public data is readable by all authenticated users, but writable only by admins.
  * - Listing all users is disallowed.
- * - No data shape validation is performed in this prototyping phase, but relational integrity (ownership) is enforced.
- *
- * Denormalization for Authorization:
- * The rules leverage path-based authorization and denormalized `userId` fields in subcollections to avoid costly `get()` calls. This ensures that authorization checks are efficient and independent.
+ * - Admin access is controlled via custom authentication tokens with an `isAdmin` claim.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -27,6 +24,15 @@ service cloud.firestore {
      */
     function isSignedIn() {
       return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the signed-in user is an administrator.
+     * It relies on a custom claim `isAdmin` in the user's authentication token.
+     * @return {bool} True if the user is an admin, false otherwise.
+     */
+    function isAdmin() {
+      return request.auth.token.isAdmin == true;
     }
 
     /**
@@ -49,162 +55,104 @@ service cloud.firestore {
 
     /**
      * @description Security rules for user profiles.
-     * @path /users/{userId}
-     * @allow (create) User with ID 'user123' can create their own profile.
-     * @deny (create) User with ID 'user123' cannot create a profile for 'user456'.
-     * @allow (get) User with ID 'user123' can read their own profile.
-     * @deny (get) User with ID 'user123' cannot read profile of 'user456'.
-     * @allow (update) User with ID 'user123' can update their own profile.
-     * @deny (update) User with ID 'user123' cannot update profile of 'user456'.
-     * @allow (delete) User with ID 'user123' can delete their own profile.
-     * @deny (delete) User with ID 'user123' cannot delete profile of 'user456'.
-     * @principle Enforces document ownership for writes.
+     * Enforces document ownership for all write operations.
      */
     match /users/{userId} {
-      // Only allow signed-in users
       allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false; // Do not allow listing all users
-
-      // Allow creating a user document if the authenticated user's ID matches the document ID.
+      allow list: if false; // Disallow listing all users for security reasons.
       allow create: if isSignedIn() && isOwner(userId);
-
-      // Allow updating a user document if the authenticated user is the owner.
       allow update: if isExistingOwner(userId);
-
-      // Allow deleting a user document if the authenticated user is the owner and the resource exists.
       allow delete: if isExistingOwner(userId);
     }
 
     /**
      * @description Security rules for pharmacies.
-     * @path /pharmacies/{pharmacyId}
-     * @allow (get) Any signed-in user can read pharmacy information.
-     * @allow (list) Any signed-in user can list pharmacies.
-     * @deny (create) No one can create pharmacy documents through the client.
-     * @deny (update) No one can update pharmacy documents through the client.
-     * @deny (delete) No one can delete pharmacy documents through the client.
-     * @principle Allows public read access but restricts write access.
+     * Allows public read access but restricts write access to admins.
      */
     match /pharmacies/{pharmacyId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow create, update, delete: if isSignedIn() && isAdmin();
     }
 
     /**
      * @description Security rules for physiotherapy packages.
-     * @path /physiotherapyPackages/{packageId}
-     * @allow (get) Any signed-in user can read physiotherapy package information.
-     * @allow (list) Any signed-in user can list physiotherapy packages.
-     * @deny (create) No one can create physiotherapy package documents through the client.
-     * @deny (update) No one can update physiotherapy package documents through the client.
-     * @deny (delete) No one can delete physiotherapy package documents through the client.
-     * @principle Allows public read access but restricts write access.
+     * Allows public read access but restricts write access to admins.
      */
     match /physiotherapyPackages/{packageId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow create, update, delete: if isSignedIn() && isAdmin();
     }
 
     /**
      * @description Security rules for appointments within a user's profile.
-     * @path /users/{userId}/appointments/{appointmentId}
-     * @allow (create) User with ID 'user123' can create an appointment under their profile.
-     * @deny (create) User with ID 'user123' cannot create an appointment under profile of 'user456'.
-     * @allow (get) User with ID 'user123' can read their own appointment.
-     * @deny (get) User with ID 'user123' cannot read appointment of 'user456'.
-     * @allow (update) User with ID 'user123' can update their own appointment.
-     * @deny (update) User with ID 'user123' cannot update appointment of 'user456'.
-     * @allow (delete) User with ID 'user123' can delete their own appointment.
-     * @deny (delete) User with ID 'user123' cannot delete appointment of 'user456'.
-     * @principle Enforces document ownership for writes.
+     * Enforces document ownership for all operations.
      */
     match /users/{userId}/appointments/{appointmentId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow get, list, create: if isSignedIn() && isOwner(userId);
+      allow update, delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Security rules for generic bookings within a user's profile.
+     * Enforces document ownership for all operations.
+     */
+    match /users/{userId}/bookings/{bookingId} {
+      allow get, list, create: if isSignedIn() && isOwner(userId);
+      allow update, delete: if isExistingOwner(userId);
     }
 
     /**
      * @description Security rules for doctors.
-     * @path /doctors/{doctorId}
-     * @allow (get) Any signed-in user can read doctor information.
-     * @allow (list) Any signed-in user can list doctors.
-     * @deny (create) No one can create doctor documents through the client.
-     * @deny (update) No one can update doctor documents through the client.
-     * @deny (delete) No one can delete doctor documents through the client.
-     * @principle Allows public read access but restricts write access.
+     * Allows public read access but restricts write access to admins.
      */
     match /doctors/{doctorId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow create, update, delete: if isSignedIn() && isAdmin();
     }
 
     /**
      * @description Security rules for clinics.
-     * @path /clinics/{clinicId}
-     * @allow (get) Any signed-in user can read clinic information.
-     * @allow (list) Any signed-in user can list clinics.
-     * @deny (create) No one can create clinic documents through the client.
-     * @deny (update) No one can update clinic documents through the client.
-     * @deny (delete) No one can delete clinic documents through the client.
-     * @principle Allows public read access but restricts write access.
+     * Allows public read access but restricts write access to admins.
      */
     match /clinics/{clinicId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow create, update, delete: if isSignedIn() && isAdmin();
     }
 
     /**
      * @description Security rules for nursing care packages.
-     * @path /nursingCarePackages/{packageId}
-     * @allow (get) Any signed-in user can read nursing care package information.
-     * @allow (list) Any signed-in user can list nursing care packages.
-     * @deny (create) No one can create nursing care package documents through the client.
-     * @deny (update) No one can update nursing care package documents through the client.
-     * @deny (delete) No one can delete nursing care package documents through the client.
-     * @principle Allows public read access but restricts write access.
+     * Allows public read access but restricts write access to admins.
      */
     match /nursingCarePackages/{packageId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow create, update, delete: if isSignedIn() && isAdmin();
     }
 
     /**
      * @description Security rules for lab tests.
-     * @path /labTests/{labTestId}
-     * @allow (get) Any signed-in user can read lab test information.
-     * @allow (list) Any signed-in user can list lab tests.
-     * @deny (create) No one can create lab test documents through the client.
-     * @deny (update) No one can update lab test documents through the client.
-     * @deny (delete) No one can delete lab test documents through the client.
-     * @principle Allows public read access but restricts write access.
+     * Allows public read access but restricts write access to admins.
      */
     match /labTests/{labTestId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow create, update, delete: if isSignedIn() && isAdmin();
     }
 
     /**
      * @description Security rules for lab test bookings within a user's profile.
-     * @path /users/{userId}/labTestBookings/{labTestBookingId}
-     * @allow (create) User with ID 'user123' can create a lab test booking under their profile.
-     * @deny (create) User with ID 'user123' cannot create a lab test booking under profile of 'user456'.
-     * @allow (get) User with ID 'user123' can read their own lab test booking.
-     * @deny (get) User with ID 'user123' cannot read lab test booking of 'user456'.
-     * @allow (update) User with ID 'user123' can update their own lab test booking.
-     * @deny (update) User with ID 'user123' cannot update lab test booking of 'user456'.
-     * @allow (delete) User with ID 'user123' can delete their own lab test booking.
-     * @deny (delete) User with ID 'user123' cannot delete lab test booking of 'user456'.
-     * @principle Enforces document ownership for writes.
+     * Enforces document ownership for all operations.
      */
     match /users/{userId}/labTestBookings/{labTestBookingId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow get, list, create: if isSignedIn() && isOwner(userId);
+      allow update, delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Security rules for radiology tests.
+     * Allows public read access but restricts write access to admins.
+     */
+    match /radiology/{radiologyId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && isAdmin();
     }
   }
 }

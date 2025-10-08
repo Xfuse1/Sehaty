@@ -2,8 +2,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useFirestore, useStorage, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { useFirestore, useStorage } from '@/firebase';
+import { collection, doc, getDocs } from 'firebase/firestore';
+import { setDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,56 +32,90 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
-interface Doctor {
-  id?: string;
-  name: string;
-  specialty: string;
-  price: number;
-  image: string;
-  location: string;
-  experience: number;
-  rating: number;
-  reviews: number;
-  tags: string[];
-  bio: string;
-}
+const doctorSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(2, { message: "اسم الطبيب مطلوب." }),
+  specialty: z.string().min(2, { message: "التخصص مطلوب." }),
+  price: z.preprocess(
+    (a) => parseFloat(z.string().parse(a)),
+    z.number().positive({ message: "السعر يجب أن يكون رقمًا موجبًا." })
+  ),
+  image: z.string().optional(),
+  location: z.string().min(1, { message: "الموقع مطلوب." }),
+  experience: z.preprocess(
+    (a) => parseInt(z.string().parse(a), 10),
+    z.number().positive({ message: "الخبرة يجب أن تكون رقمًا موجبًا." })
+  ),
+  rating: z.preprocess(
+    (a) => parseFloat(z.string().parse(a)),
+    z.number().min(1).max(5, { message: "التقييم يجب أن يكون بين 1 و 5." })
+  ),
+  reviews: z.preprocess(
+    (a) => parseInt(z.string().parse(a), 10),
+    z.number().min(0, { message: "عدد المراجعات لا يمكن أن يكون سالبًا." })
+  ),
+  tags: z.string().optional(),
+  bio: z.string().min(10, { message: "النبذة التعريفية يجب أن تكون 10 أحرف على الأقل." }),
+});
+
+type Doctor = z.infer<typeof doctorSchema>;
 
 export default function DoctorsPage() {
   const firestore = useFirestore();
   const storage = useStorage();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentDoctor, setCurrentDoctor] = useState<Partial<Doctor> | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchDoctors() {
-      if (!firestore) return;
-      try {
-        setIsLoading(true);
-        const doctorsCol = collection(firestore, 'doctors');
-        const doctorsSnapshot = await getDocs(doctorsCol);
-        const doctorsList = doctorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Doctor));
-        setDoctors(doctorsList);
-      } catch (error) {
-        console.error("Failed to fetch doctors:", error);
-        toast({
-          variant: "destructive",
-          title: "خطأ في جلب الأطباء",
-          description: "لم نتمكن من تحميل قائمة الأطباء. يرجى المحاولة مرة أخرى.",
-        });
-      } finally {
-        setIsLoading(false);
-      }
+  const form = useForm<Doctor>({
+    resolver: zodResolver(doctorSchema),
+    defaultValues: {
+      name: '',
+      specialty: '',
+      price: 0,
+      image: '',
+      location: '',
+      experience: 0,
+      rating: 0,
+      reviews: 0,
+      tags: '',
+      bio: '',
+    },
+  });
+
+  async function fetchDoctors() {
+    if (!firestore) return;
+    try {
+      setIsLoading(true);
+      const doctorsCol = collection(firestore, 'doctors');
+      const doctorsSnapshot = await getDocs(doctorsCol);
+      const doctorsList = doctorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Doctor));
+      setDoctors(doctorsList);
+    } catch (error) {
+      console.error("Failed to fetch doctors:", error);
+      toast({
+        variant: "destructive",
+        title: "خطأ في جلب الأطباء",
+        description: "لم نتمكن من تحميل قائمة الأطباء. يرجى المحاولة مرة أخرى.",
+      });
+    } finally {
+      setIsLoading(false);
     }
+  }
+
+  useEffect(() => {
     fetchDoctors();
-  }, [firestore, toast]);
+  }, [firestore]);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -88,23 +123,21 @@ export default function DoctorsPage() {
       setSelectedFile(file);
       const reader = new FileReader();
       reader.onload = (event) => {
-        setCurrentDoctor(prev => ({...prev, image: event.target?.result as string}));
+        setPreviewImage(event.target?.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSave = async () => {
-    if (!currentDoctor || !currentDoctor.name || !currentDoctor.specialty || !firestore) {
-      toast({ variant: 'destructive', title: 'خطأ', description: 'يرجى ملء الحقول المطلوبة.' });
-      return;
-    }
+  const onSubmit = async (data: Doctor) => {
+    if (!firestore) return;
     
-    setIsSaving(true);
-    setUploadProgress(null);
+    form.clearErrors();
+    const isSaving = form.formState.isSubmitting;
+    if(isSaving) return;
 
     try {
-      let imageUrl = currentDoctor.image || `https://picsum.photos/seed/${currentDoctor.name}/200/200`;
+      let imageUrl = data.image || previewImage || `https://picsum.photos/seed/${data.name}/200/200`;
 
       if (selectedFile && storage) {
         setUploadProgress(0);
@@ -115,37 +148,30 @@ export default function DoctorsPage() {
         setUploadProgress(100);
       }
       
-      const doctorData: Omit<Doctor, 'id'> = {
-        name: currentDoctor.name,
-        specialty: currentDoctor.specialty,
-        price: Number(currentDoctor.price) || 0,
+      const doctorData = {
+        ...data,
         image: imageUrl,
-        location: currentDoctor.location || '',
-        experience: Number(currentDoctor.experience) || 0,
-        rating: Number(currentDoctor.rating) || 0,
-        reviews: Number(currentDoctor.reviews) || 0,
-        tags: Array.isArray(currentDoctor.tags) ? currentDoctor.tags : ((currentDoctor.tags as any) || '').split(',').map((t: string) => t.trim()).filter(Boolean),
-        bio: currentDoctor.bio || '',
+        tags: (data.tags || '').split(',').map(t => t.trim()).filter(Boolean),
       };
+      
+      const { id, ...dataToSave } = doctorData;
 
-      if (currentDoctor.id) {
-        const docRef = doc(firestore, 'doctors', currentDoctor.id);
-        updateDocumentNonBlocking(docRef, doctorData);
+      if (id) {
+        const docRef = doc(firestore, 'doctors', id);
+        updateDocumentNonBlocking(docRef, dataToSave);
         toast({ title: 'تم التحديث', description: 'تم تحديث بيانات الطبيب بنجاح.' });
-        setDoctors(doctors.map(d => d.id === currentDoctor.id ? { id: d.id, ...doctorData } : d));
       } else {
-        const newDocRef = await addDoc(collection(firestore, 'doctors'), doctorData);
+        const newDocRef = doc(collection(firestore, 'doctors'));
+        setDocumentNonBlocking(newDocRef, dataToSave, { merge: false });
         toast({ title: 'تمت الإضافة', description: 'تمت إضافة الطبيب بنجاح.' });
-        setDoctors([...doctors, { id: newDocRef.id, ...doctorData }]);
       }
+      
+      fetchDoctors();
       setIsDialogOpen(false);
-      setCurrentDoctor(null);
-      setSelectedFile(null);
     } catch (error) {
       console.error("Error saving doctor:", error);
       toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حفظ بيانات الطبيب.' });
     } finally {
-        setIsSaving(false);
         setUploadProgress(null);
     }
   };
@@ -154,9 +180,9 @@ export default function DoctorsPage() {
     if(!firestore || !confirm('هل أنت متأكد من رغبتك في حذف هذا الطبيب؟')) return;
 
     try {
-      await deleteDoc(doc(firestore, 'doctors', doctorId));
+      deleteDocumentNonBlocking(doc(firestore, 'doctors', doctorId));
       toast({ title: 'تم الحذف', description: 'تم حذف الطبيب بنجاح.' });
-      setDoctors(doctors.filter(d => d.id !== doctorId));
+      fetchDoctors();
     } catch (error) {
       console.error("Error deleting doctor:", error);
       toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حذف الطبيب.' });
@@ -164,7 +190,19 @@ export default function DoctorsPage() {
   };
   
   const openDialog = (doctor: Partial<Doctor> | null = null) => {
-    setCurrentDoctor(doctor || { name: '', specialty: '', price: 0, image: '', location: '', experience: 0, rating: 0, reviews: 0, tags: [], bio: '' });
+    if (doctor) {
+        form.reset({
+            ...doctor,
+            tags: Array.isArray(doctor.tags) ? doctor.tags.join(', ') : '',
+        });
+        setPreviewImage(doctor.image || null);
+    } else {
+        form.reset({
+            name: '', specialty: '', price: 0, image: '', location: '',
+            experience: 0, rating: 0, reviews: 0, tags: '', bio: ''
+        });
+        setPreviewImage(null);
+    }
     setSelectedFile(null);
     setIsDialogOpen(true);
   }
@@ -210,7 +248,7 @@ export default function DoctorsPage() {
                     <TableRow key={doctor.id}>
                     <TableCell>
                         <Image
-                            src={doctor.image}
+                            src={doctor.image || '/default-avatar.png'}
                             alt={doctor.name}
                             width={50}
                             height={50}
@@ -242,85 +280,114 @@ export default function DoctorsPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>{currentDoctor?.id ? 'تعديل بيانات طبيب' : 'إضافة طبيب جديد'}</DialogTitle>
+            <DialogTitle>{form.getValues('id') ? 'تعديل بيانات طبيب' : 'إضافة طبيب جديد'}</DialogTitle>
             <DialogDescription>
               املأ البيانات بالأسفل لحفظ معلومات الطبيب.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
-            <div className="space-y-2">
-              <Label>صورة الطبيب</Label>
-              <div className="flex items-center gap-4">
-                <div className="w-24 h-24 rounded-full border flex items-center justify-center bg-muted/50 overflow-hidden">
-                    {currentDoctor?.image ? (
-                        <Image src={currentDoctor.image} alt="Preview" width={96} height={96} className="rounded-full object-cover" />
-                    ) : (
-                        <span className="text-xs text-muted-foreground">معاينة</span>
-                    )}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              <div className="space-y-2">
+                <Label>صورة الطبيب</Label>
+                <div className="flex items-center gap-4">
+                  <div className="w-24 h-24 rounded-full border flex items-center justify-center bg-muted/50 overflow-hidden">
+                      {previewImage ? (
+                          <Image src={previewImage} alt="Preview" width={96} height={96} className="rounded-full object-cover" />
+                      ) : (
+                          <span className="text-xs text-muted-foreground">معاينة</span>
+                      )}
+                  </div>
+                  <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="ml-2 h-4 w-4" />
+                      اختر صورة
+                  </Button>
+                  <Input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="image/*" />
                 </div>
-                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                    <Upload className="ml-2 h-4 w-4" />
-                    اختر صورة
-                </Button>
-                <Input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="image/*" />
               </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <Label htmlFor="name">اسم الطبيب</Label>
-                    <Input id="name" value={currentDoctor?.name} onChange={(e) => setCurrentDoctor({...currentDoctor, name: e.target.value})} />
-                </div>
-                <div>
-                    <Label htmlFor="specialty">التخصص</Label>
-                    <Input id="specialty" value={currentDoctor?.specialty} onChange={(e) => setCurrentDoctor({...currentDoctor, specialty: e.target.value})} />
-                </div>
-                <div>
-                    <Label htmlFor="price">رسوم الكشف</Label>
-                    <Input id="price" type="number" value={currentDoctor?.price || ''} onChange={(e) => setCurrentDoctor({...currentDoctor, price: Number(e.target.value)})} />
-                </div>
-                <div>
-                    <Label htmlFor="experience">سنوات الخبرة</Label>
-                    <Input id="experience" type="number" value={currentDoctor?.experience || ''} onChange={(e) => setCurrentDoctor({...currentDoctor, experience: Number(e.target.value)})} />
-                </div>
-                 <div>
-                    <Label htmlFor="rating">التقييم (من 5)</Label>
-                    <Input id="rating" type="number" step="0.1" value={currentDoctor?.rating || ''} onChange={(e) => setCurrentDoctor({...currentDoctor, rating: Number(e.target.value)})} />
-                </div>
-                 <div>
-                    <Label htmlFor="reviews">عدد المراجعات</Label>
-                    <Input id="reviews" type="number" value={currentDoctor?.reviews || ''} onChange={(e) => setCurrentDoctor({...currentDoctor, reviews: Number(e.target.value)})} />
-                </div>
-            </div>
-            <div>
-                <Label htmlFor="location">الموقع/العيادة</Label>
-                <Input id="location" value={currentDoctor?.location} onChange={(e) => setCurrentDoctor({...currentDoctor, location: e.target.value})} />
-            </div>
-             <div>
-                <Label htmlFor="tags">الوسوم (مفصولة بفاصلة)</Label>
-                <Input id="tags" value={(Array.isArray(currentDoctor?.tags) ? currentDoctor.tags.join(', ') : currentDoctor?.tags) || ''} onChange={(e) => setCurrentDoctor({...currentDoctor, tags: (e.target.value as any).split(',').map((t: string) => t.trim())})} />
-            </div>
-            <div>
-                <Label htmlFor="bio">النبذة التعريفية</Label>
-                <Textarea id="bio" value={currentDoctor?.bio} onChange={(e) => setCurrentDoctor({...currentDoctor, bio: e.target.value})} />
-            </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="name" render={({ field }) => (
+                      <FormItem>
+                          <FormLabel>اسم الطبيب</FormLabel>
+                          <FormControl><Input {...field} /></FormControl>
+                          <FormMessage />
+                      </FormItem>
+                  )} />
+                  <FormField control={form.control} name="specialty" render={({ field }) => (
+                      <FormItem>
+                          <FormLabel>التخصص</FormLabel>
+                          <FormControl><Input {...field} /></FormControl>
+                          <FormMessage />
+                      </FormItem>
+                  )} />
+                  <FormField control={form.control} name="price" render={({ field }) => (
+                      <FormItem>
+                          <FormLabel>رسوم الكشف</FormLabel>
+                          <FormControl><Input type="number" {...field} /></FormControl>
+                          <FormMessage />
+                      </FormItem>
+                  )} />
+                  <FormField control={form.control} name="experience" render={({ field }) => (
+                      <FormItem>
+                          <FormLabel>سنوات الخبرة</FormLabel>
+                          <FormControl><Input type="number" {...field} /></FormControl>
+                          <FormMessage />
+                      </FormItem>
+                  )} />
+                  <FormField control={form.control} name="rating" render={({ field }) => (
+                      <FormItem>
+                          <FormLabel>التقييم (من 5)</FormLabel>
+                          <FormControl><Input type="number" step="0.1" {...field} /></FormControl>
+                          <FormMessage />
+                      </FormItem>
+                  )} />
+                  <FormField control={form.control} name="reviews" render={({ field }) => (
+                      <FormItem>
+                          <FormLabel>عدد المراجعات</FormLabel>
+                          <FormControl><Input type="number" {...field} /></FormControl>
+                          <FormMessage />
+                      </FormItem>
+                  )} />
+              </div>
+              <FormField control={form.control} name="location" render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>الموقع/العيادة</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                      <FormMessage />
+                  </FormItem>
+              )} />
+              <FormField control={form.control} name="tags" render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>الوسوم (مفصولة بفاصلة)</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                      <FormMessage />
+                  </FormItem>
+              )} />
+              <FormField control={form.control} name="bio" render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>النبذة التعريفية</FormLabel>
+                      <FormControl><Textarea {...field} /></FormControl>
+                      <FormMessage />
+                  </FormItem>
+              )} />
 
-            {uploadProgress !== null && (
-                <div className="space-y-1">
-                    <Label>جارِ رفع الصورة...</Label>
-                    <Progress value={uploadProgress} />
-                </div>
-            )}
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-                <Button variant="outline">إلغاء</Button>
-            </DialogClose>
-            <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
-                {isSaving ? 'جارِ الحفظ...' : 'حفظ'}
-            </Button>
-          </DialogFooter>
+              {uploadProgress !== null && (
+                  <div className="space-y-1">
+                      <Label>جارِ رفع الصورة...</Label>
+                      <Progress value={uploadProgress} />
+                  </div>
+              )}
+               <DialogFooter className="mt-4 pt-4 border-t">
+                    <DialogClose asChild>
+                        <Button type="button" variant="outline">إلغاء</Button>
+                    </DialogClose>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                        {form.formState.isSubmitting ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+                        {form.formState.isSubmitting ? 'جارِ الحفظ...' : 'حفظ'}
+                    </Button>
+                </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>

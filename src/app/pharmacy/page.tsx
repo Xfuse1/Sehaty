@@ -1,75 +1,38 @@
 
-
 "use client"
 
+import { useState } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, Camera, Bot, Rocket, Clock, Truck } from "lucide-react";
+import { Search, Camera, Bot, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
+import { productsData, Product } from "@/lib/products-data";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const careProducts = [
-  {
-    name: "كريم ستارفيل للتفتيح",
-    price: "85.00 ر.س",
-    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/starville-whitening-cream-60gm-01662985303.png",
-    imgHint: "whitening cream tube",
-  },
-  {
-    name: "سيروم سيروبايب للشعر",
-    price: "150.00 ر.س",
-    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/seropipe-hair-serum-100ml-lotion-01654093952.png",
-    imgHint: "hair serum bottle",
-  },
-  {
-    name: "شامبو كلاري ضد القشرة",
-    price: "110.75 ر.س",
-    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/clary-anti-dandruff-shampoo-for-oily-hair-250ml-01698759367.png",
-    imgHint: "shampoo bottle",
-  },
-  {
-    name: "زيت بندولين للأطفال",
-    price: "95.00 ر.س",
-    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/penduline-plus-hair-oil-120ml-01689694294.png",
-    imgHint: "baby oil bottle",
-  },
-  {
-    name: "شامبو جونسون للأطفال",
-    price: "45.00 ر.س",
-    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/johnsons-baby-shampoo-500ml-01663236085.png",
-    imgHint: "baby shampoo",
-  },
-  {
-    name: "لوشن ستارفيل مرطب",
-    price: "120.00 ر.س",
-    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/1634215984-starville-hydrating-lotion-for-normal-to-dry-skin-200ml.png",
-    imgHint: "moisturizing lotion",
-  },
-  {
-    name: "ماسك كلاري للشعر",
-    price: "99.00 ر.س",
-    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/clary-hair-mask-with-argan-oil-300gm-01675253876.png",
-    imgHint: "hair mask jar",
-  },
-  {
-    name: "كريم بندولين كيدز",
-    price: "75.50 ر.س",
-    imgSrc: "https://cdn.chefaa.com/filters:format(webp)/fit-in/1000x1000/public/uploads/products/penduline-hair-cream-for-kids-150-ml-01653830206.png",
-    imgHint: "kids cream tube",
-  },
-];
-
-const features = [
-    { icon: <Rocket className="h-8 w-8 text-primary" />, text: "توصيل سريع" },
-    { icon: <Clock className="h-8 w-8 text-primary" />, text: "خدمة 24/7" },
-    { icon: <Truck className="h-8 w-8 text-primary" />, text: "توصيل مجاني لفترة محدودة" },
-];
 
 export default function PharmacyPage() {
   const whatsappLink = "https://wa.me/201211886649";
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
+
+  const filteredProducts = productsData.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            product.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = activeTab === 'all' || product.category === activeTab;
+      return matchesSearch && matchesCategory;
+  });
+
+  const categories = {
+      'all': 'الكل',
+      'skin-care': 'العناية بالبشرة',
+      'hair-care': 'العناية بالشعر',
+      'baby-care': 'العناية بالطفل',
+      'essentials': 'أساسيات'
+  }
 
   return (
     <div className="bg-background text-foreground">
@@ -82,7 +45,7 @@ export default function PharmacyPage() {
             عنايتك الكاملة تصلك لباب بيتك
           </h1>
           <p className="mt-6 text-lg md:text-xl max-w-3xl mx-auto text-muted-foreground">
-            تصفح مجموعتنا المختارة من منتجات العناية بالبشرة، الشعر، والأطفال، واطلبها بسهولة.
+            تصفح مجموعتنا المختارة من منتجات العناية واطلبها بسهولة عبر واتساب.
           </p>
         </div>
       </header>
@@ -120,50 +83,62 @@ export default function PharmacyPage() {
           </Card>
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            {features.map((feature, index) => (
-                <div key={index} className="p-6 bg-card rounded-xl border flex flex-col items-center gap-3">
-                    {feature.icon}
-                    <p className="font-semibold text-lg">{feature.text}</p>
-                </div>
-            ))}
-        </section>
-
         <section>
-            <div className="mb-12">
+            <div className="mb-12 space-y-6">
                 <div className="relative max-w-2xl mx-auto">
-                    <Input placeholder="ابحث عن منتج للعناية بالبشرة، الشعر، أو الأطفال..." className="pl-10 h-12 text-base"/>
+                    <Input 
+                        placeholder="ابحث عن منتج..." 
+                        className="pl-10 h-12 text-base"
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 </div>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 max-w-2xl mx-auto h-auto">
+                        {Object.entries(categories).map(([key, value]) => (
+                             <TabsTrigger key={key} value={key} className="text-base h-10">{value}</TabsTrigger>
+                        ))}
+                    </TabsList>
+                </Tabs>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-              {careProducts.map((product) => (
-                <Card key={product.name} className="overflow-hidden group">
+              {filteredProducts.map((product) => (
+                <Card key={product.id} className="overflow-hidden group flex flex-col">
                   <CardHeader className="p-0">
                     <div className="relative w-full h-48 bg-card flex items-center justify-center">
                       <Image
-                        src={product.imgSrc}
+                        src={product.image}
                         alt={product.name}
                         fill
                         style={{ objectFit: 'contain' }}
-                        className="transition-transform duration-300 group-hover:scale-110 p-2"
-                        data-ai-hint={product.imgHint}
+                        className="transition-transform duration-300 group-hover:scale-110 p-4"
                       />
                     </div>
                   </CardHeader>
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 flex-grow">
                     <CardTitle className="text-lg font-semibold mb-2 h-12">{product.name}</CardTitle>
-                    <p className="text-primary font-bold text-xl">{product.price}</p>
+                    <p className="text-sm text-muted-foreground mb-3 h-20 overflow-hidden">{product.description}</p>
+                    <div className="flex items-center gap-1 text-amber-500">
+                        <Star className="w-5 h-5 fill-current" />
+                        <span className="font-bold">{product.rating}</span>
+                    </div>
                   </CardContent>
-                  <CardFooter className="p-4 pt-0">
+                  <CardFooter className="p-4 pt-0 flex-col items-start gap-4">
+                    <p className="text-primary font-bold text-xl">{product.price.toFixed(2)} ر.س</p>
                     <Button asChild className="w-full" variant="secondary">
                       <Link href={`${whatsappLink}?text=${encodeURIComponent(`أرغب في طلب منتج: ${product.name}`)}`} target="_blank">
-                        اطلب الآن
+                        اطلب الآن عبر واتساب
                       </Link>
                     </Button>
                   </CardFooter>
                 </Card>
               ))}
+                {filteredProducts.length === 0 && (
+                    <div className="text-center text-muted-foreground py-16 col-span-full">
+                        <p className="text-lg">لا توجد منتجات تطابق بحثك الحالي.</p>
+                    </div>
+                )}
             </div>
         </section>
       </main>
