@@ -3,9 +3,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useFirestore, useStorage } from '@/firebase';
-import { collection, doc, getDocs, deleteDoc } from 'firebase/firestore';
-import { setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, doc, getDocs, deleteDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -128,23 +127,40 @@ export default function DoctorsPage() {
       reader.readAsDataURL(file);
     }
   };
+  
+  const uploadImage = async (file: File): Promise<string> => {
+    if (!storage) throw new Error("Firebase Storage is not initialized.");
+    
+    return new Promise((resolve, reject) => {
+        const storageRef = ref(storage, `doctors/${Date.now()}_${file.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        uploadTask.on('state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setUploadProgress(progress);
+            },
+            (error) => {
+                console.error("Upload failed:", error);
+                reject(error);
+            },
+            async () => {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve(downloadURL);
+            }
+        );
+    });
+  };
 
   const onSubmit = async (data: Doctor) => {
     if (!firestore) return;
-    
-    setIsDialogOpen(false);
-    const isSaving = form.formState.isSubmitting;
-    if(isSaving) return;
 
     try {
-      let imageUrl = data.image || previewImage || `https://picsum.photos/seed/${data.name}/200/200`;
+      let imageUrl = form.getValues('image') || previewImage || `https://picsum.photos/seed/${data.name}/200/200`;
 
-      if (selectedFile && storage) {
+      if (selectedFile) {
         toast({ title: 'جارِ رفع الصورة...' });
-        setUploadProgress(0);
-        const storageRef = ref(storage, `doctors/${Date.now()}_${selectedFile.name}`);
-        const uploadTask = await uploadBytes(storageRef, selectedFile);
-        imageUrl = await getDownloadURL(uploadTask.ref);
+        imageUrl = await uploadImage(selectedFile);
         toast({ title: 'اكتمل رفع الصورة' });
       }
       
@@ -167,12 +183,15 @@ export default function DoctorsPage() {
       }
       
       await fetchDoctors();
+      setIsDialogOpen(false);
       
     } catch (error) {
       console.error("Error saving doctor:", error);
       toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حفظ بيانات الطبيب.' });
     } finally {
         setUploadProgress(null);
+        setSelectedFile(null);
+        setPreviewImage(null);
         form.reset();
     }
   };
@@ -206,6 +225,7 @@ export default function DoctorsPage() {
         setPreviewImage(null);
     }
     setSelectedFile(null);
+    setUploadProgress(null);
     setIsDialogOpen(true);
   }
 
@@ -305,6 +325,11 @@ export default function DoctorsPage() {
                   </Button>
                   <Input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="image/*" />
                 </div>
+                 {uploadProgress !== null && (
+                  <div className="space-y-1 pt-2">
+                      <Progress value={uploadProgress} />
+                  </div>
+              )}
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -373,12 +398,6 @@ export default function DoctorsPage() {
                   </FormItem>
               )} />
 
-              {uploadProgress !== null && (
-                  <div className="space-y-1">
-                      <Label>جارِ رفع الصورة...</Label>
-                      <Progress value={uploadProgress} />
-                  </div>
-              )}
                <DialogFooter className="mt-4 pt-4 border-t">
                     <DialogClose asChild>
                         <Button type="button" variant="outline">إلغاء</Button>
