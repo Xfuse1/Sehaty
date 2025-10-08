@@ -1,23 +1,44 @@
 
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, Star, MapPin } from "lucide-react";
+import { Search, Star, MapPin, Loader2 } from "lucide-react";
 import Image from "next/image";
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { doctorsData, Doctor } from '@/lib/doctors-data';
+import { collection, DocumentData } from 'firebase/firestore';
+
+// Define the Doctor type based on what we expect from Firestore
+interface Doctor extends DocumentData {
+    id: string;
+    name: string;
+    specialty: string;
+    rating: number;
+    reviews: number;
+    experience: number;
+    location: string;
+    price: number;
+    image: string;
+}
 
 export default function DoctorsDirectoryPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const { user } = useUser();
     const router = useRouter();
     const { toast } = useToast();
+    const firestore = useFirestore();
+
+    const doctorsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'doctors');
+    }, [firestore]);
+
+    const { data: doctors, isLoading: doctorsLoading } = useCollection<Doctor>(doctorsQuery);
 
     const handleBooking = (doctor: Doctor) => {
         if (!user) {
@@ -33,7 +54,7 @@ export default function DoctorsDirectoryPage() {
         }
     };
     
-    const filteredDoctors = doctorsData.filter(doc => 
+    const filteredDoctors = (doctors || []).filter(doc => 
         doc.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
         doc.specialty.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -66,37 +87,42 @@ export default function DoctorsDirectoryPage() {
             </header>
 
             <main className="container mx-auto px-4 py-16">
-                <div className="space-y-6">
-                    {filteredDoctors.map(doc => (
-                        <Card key={doc.id} className="flex flex-col md:flex-row items-start gap-6 p-6 rounded-2xl shadow-sm transition-shadow hover:shadow-md">
-                            <div className="flex-shrink-0 flex flex-col items-center w-full md:w-40">
-                                <Image src={doc.image} alt={doc.name} width={100} height={100} className="rounded-full border-4 border-background outline outline-2 outline-border" data-ai-hint="doctor portrait" />
-                                <div className="text-center mt-3">
-                                    <div className="flex items-center justify-center gap-1 text-amber-500">
-                                        <Star className="w-5 h-5 fill-current" />
-                                        <span className="font-bold">{doc.rating}</span>
-                                        <span className="text-xs text-muted-foreground">({doc.reviews} مراجعة)</span>
+                {doctorsLoading ? (
+                     <div className="flex justify-center items-center h-64">
+                        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                    </div>
+                ) : (
+                    <div className="space-y-6">
+                        {filteredDoctors.length > 0 ? filteredDoctors.map(doc => (
+                            <Card key={doc.id} className="flex flex-col md:flex-row items-start gap-6 p-6 rounded-2xl shadow-sm transition-shadow hover:shadow-md">
+                                <div className="flex-shrink-0 flex flex-col items-center w-full md:w-40">
+                                    <Image src={doc.image} alt={doc.name} width={100} height={100} className="rounded-full border-4 border-background outline outline-2 outline-border" data-ai-hint="doctor portrait" />
+                                    <div className="text-center mt-3">
+                                        <div className="flex items-center justify-center gap-1 text-amber-500">
+                                            <Star className="w-5 h-5 fill-current" />
+                                            <span className="font-bold">{doc.rating}</span>
+                                            <span className="text-xs text-muted-foreground">({doc.reviews} مراجعة)</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="flex-grow border-t md:border-t-0 md:border-r border-dashed pt-6 md:pt-0 md:pr-6 w-full">
-                                <h3 className="text-xl font-bold text-primary">{doc.name}</h3>
-                                <p className="text-muted-foreground font-medium">{doc.specialty}</p>
-                                <div className="text-sm space-y-2 text-muted-foreground mt-3">
-                                    <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-primary/70" /> {doc.location}</div>
-                                    <div className="flex items-center gap-2"><strong>{doc.experience}</strong> سنة خبرة</div>
+                                <div className="flex-grow border-t md:border-t-0 md:border-r border-dashed pt-6 md:pt-0 md:pr-6 w-full">
+                                    <h3 className="text-xl font-bold text-primary">{doc.name}</h3>
+                                    <p className="text-muted-foreground font-medium">{doc.specialty}</p>
+                                    <div className="text-sm space-y-2 text-muted-foreground mt-3">
+                                        <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-primary/70" /> {doc.location}</div>
+                                        <div className="flex items-center gap-2"><strong>{doc.experience}</strong> سنة خبرة</div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex-shrink-0 flex flex-col items-center justify-center w-full md:w-48 border-t md:border-t-0 pt-6 md:pt-0 gap-4 self-center">
-                                <div className="font-bold text-lg">{(doc.price)} ريال</div>
-                                <Button className="w-full" onClick={() => handleBooking(doc)}>احجز الآن</Button>
-                            </div>
-                        </Card>
-                    ))}
-                    {filteredDoctors.length === 0 && (
-                        <p className="text-center text-muted-foreground py-8">لا توجد نتائج مطابقة لبحثك.</p>
-                    )}
-                </div>
+                                <div className="flex-shrink-0 flex flex-col items-center justify-center w-full md:w-48 border-t md:border-t-0 pt-6 md:pt-0 gap-4 self-center">
+                                    <div className="font-bold text-lg">{(doc.price)} ريال</div>
+                                    <Button className="w-full" onClick={() => handleBooking(doc)}>احجز الآن</Button>
+                                </div>
+                            </Card>
+                        )) : (
+                            <p className="text-center text-muted-foreground py-8">لا توجد نتائج مطابقة لبحثك.</p>
+                        )}
+                    </div>
+                )}
             </main>
         </div>
     );
