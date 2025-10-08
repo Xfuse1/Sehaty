@@ -35,6 +35,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const doctorSchema = z.object({
   id: z.string().optional(),
@@ -155,58 +157,82 @@ export default function DoctorsPage() {
   const onSubmit = async (data: Doctor) => {
     if (!firestore) return;
 
-    try {
-      let imageUrl = form.getValues('image') || previewImage || `https://picsum.photos/seed/${data.name}/200/200`;
+    form.control.markAsSubmitting(true);
+    
+    let imageUrl = form.getValues('image') || previewImage || `https://picsum.photos/seed/${data.name}/200/200`;
 
-      if (selectedFile) {
-        toast({ title: 'جارِ رفع الصورة...' });
+    if (selectedFile) {
+      toast({ title: 'جارِ رفع الصورة...' });
+      try {
         imageUrl = await uploadImage(selectedFile);
         toast({ title: 'اكتمل رفع الصورة' });
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'خطأ في رفع الصورة', description: 'حدث خطأ أثناء رفع الصورة.' });
+        form.control.markAsSubmitting(false);
+        return;
       }
-      
-      const doctorData = {
-        ...data,
-        image: imageUrl,
-        tags: (data.tags || '').split(',').map(t => t.trim()).filter(Boolean),
-      };
-      
-      const { id, ...dataToSave } = doctorData;
-
-      if (id) {
-        const docRef = doc(firestore, 'doctors', id);
-        await updateDoc(docRef, dataToSave);
-        toast({ title: 'تم التحديث', description: 'تم تحديث بيانات الطبيب بنجاح.' });
-      } else {
-        const newDocRef = doc(collection(firestore, 'doctors'));
-        await setDoc(newDocRef, dataToSave);
-        toast({ title: 'تمت الإضافة', description: 'تمت إضافة الطبيب بنجاح.' });
-      }
-      
-      await fetchDoctors();
-      setIsDialogOpen(false);
-      
-    } catch (error) {
-      console.error("Error saving doctor:", error);
-      toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حفظ بيانات الطبيب.' });
-    } finally {
-        setUploadProgress(null);
-        setSelectedFile(null);
-        setPreviewImage(null);
     }
+    
+    const doctorData = {
+      ...data,
+      image: imageUrl,
+      tags: (data.tags || '').split(',').map(t => t.trim()).filter(Boolean),
+    };
+    
+    const { id, ...dataToSave } = doctorData;
+
+    const handleSuccess = () => {
+      toast({ title: id ? 'تم التحديث' : 'تمت الإضافة', description: `تم حفظ بيانات الطبيب بنجاح.` });
+      fetchDoctors();
+      setIsDialogOpen(false);
+    }
+
+    if (id) {
+      const docRef = doc(firestore, 'doctors', id);
+      updateDoc(docRef, dataToSave).then(handleSuccess).catch(serverError => {
+          const permissionError = new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'update',
+            requestResourceData: dataToSave,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+      });
+    } else {
+      const newDocRef = doc(collection(firestore, 'doctors'));
+      setDoc(newDocRef, dataToSave).then(handleSuccess).catch(serverError => {
+          const permissionError = new FirestorePermissionError({
+            path: newDocRef.path,
+            operation: 'create',
+            requestResourceData: dataToSave,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+      });
+    }
+    
+    // Reset states after submission process starts
+    setUploadProgress(null);
+    setSelectedFile(null);
+    setPreviewImage(null);
+    form.control.markAsSubmitting(false);
   };
 
 
   const handleDelete = async (doctorId: string) => {
     if(!firestore || !confirm('هل أنت متأكد من رغبتك في حذف هذا الطبيب؟')) return;
 
-    try {
-      await deleteDoc(doc(firestore, 'doctors', doctorId));
-      toast({ title: 'تم الحذف', description: 'تم حذف الطبيب بنجاح.' });
-      fetchDoctors();
-    } catch (error) {
-      console.error("Error deleting doctor:", error);
-      toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حذف الطبيب.' });
-    }
+    const docRef = doc(firestore, 'doctors', doctorId);
+    deleteDoc(docRef)
+    .then(() => {
+        toast({ title: 'تم الحذف', description: 'تم حذف الطبيب بنجاح.' });
+        fetchDoctors();
+    })
+    .catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
   };
   
   const openDialog = (doctor: Partial<Doctor> | null = null) => {

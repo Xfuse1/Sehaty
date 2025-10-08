@@ -26,6 +26,8 @@ import { Loader2, PlusCircle, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface LabTest {
   id?: string;
@@ -74,44 +76,61 @@ export default function LabTestsPage() {
     }
     
     setIsSaving(true);
-
-    try {
-      const testData = {
-        name: currentTest.name,
-        price: Number(currentTest.price),
-        description: currentTest.description || '',
-      };
-
-      if (currentTest.id) {
-        const docRef = doc(firestore, 'labTests', currentTest.id);
-        await updateDoc(docRef, testData);
-        toast({ title: 'تم التحديث', description: 'تم تحديث التحليل بنجاح.' });
-      } else {
-        await addDoc(collection(firestore, 'labTests'), testData);
-        toast({ title: 'تمت الإضافة', description: 'تمت إضافة التحليل بنجاح.' });
-      }
-      
-      await fetchLabTests();
+    
+    const testData = {
+      name: currentTest.name,
+      price: Number(currentTest.price),
+      description: currentTest.description || '',
+    };
+    
+    const handleSuccess = () => {
+      toast({ title: currentTest.id ? 'تم التحديث' : 'تمت الإضافة', description: 'تم حفظ التحليل بنجاح.' });
+      fetchLabTests();
       setIsDialogOpen(false);
-    } catch (error) {
-      console.error("Error saving lab test:", error);
-      toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حفظ التحليل.' });
-    } finally {
+      setIsSaving(false);
+    }
+
+    if (currentTest.id) {
+      const docRef = doc(firestore, 'labTests', currentTest.id);
+      updateDoc(docRef, testData).then(handleSuccess).catch(serverError => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: testData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
         setIsSaving(false);
+      });
+    } else {
+      const collectionRef = collection(firestore, 'labTests');
+      addDoc(collectionRef, testData).then(handleSuccess).catch(serverError => {
+        const permissionError = new FirestorePermissionError({
+          path: collectionRef.path,
+          operation: 'create',
+          requestResourceData: testData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        setIsSaving(false);
+      });
     }
   };
 
   const handleDelete = async (testId: string) => {
     if(!firestore || !confirm('هل أنت متأكد من رغبتك في حذف هذا التحليل؟')) return;
 
-    try {
-      await deleteDoc(doc(firestore, 'labTests', testId));
-      toast({ title: 'تم الحذف', description: 'تم حذف التحليل بنجاح.' });
-      await fetchLabTests();
-    } catch (error) {
-      console.error("Error deleting lab test:", error);
-      toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حذف التحليل.' });
-    }
+    const docRef = doc(firestore, 'labTests', testId);
+    deleteDoc(docRef)
+    .then(() => {
+        toast({ title: 'تم الحذف', description: 'تم حذف التحليل بنجاح.' });
+        fetchLabTests();
+    })
+    .catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
   };
   
   const openDialog = (test: Partial<LabTest> | null = null) => {

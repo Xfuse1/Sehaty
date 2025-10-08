@@ -27,6 +27,8 @@ import { Loader2, PlusCircle, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface NursingPackage {
   id?: string;
@@ -79,46 +81,63 @@ export default function NursingPage() {
     
     setIsSaving(true);
 
-    try {
-      const packageData = {
-        name: currentPackage.name,
-        price: Number(currentPackage.price),
-        duration: currentPackage.duration || '',
-        description: currentPackage.description || '',
-        features: Array.isArray(currentPackage.features) ? currentPackage.features : ((currentPackage.features as any) || '').split('\n').map((f:string) => f.trim()).filter(Boolean),
-        isPopular: currentPackage.isPopular || false,
-      };
-
-      if (currentPackage.id) {
-        const docRef = doc(firestore, 'nursingCarePackages', currentPackage.id);
-        await updateDoc(docRef, packageData);
-        toast({ title: 'تم التحديث', description: 'تم تحديث الباقة بنجاح.' });
-      } else {
-        await addDoc(collection(firestore, 'nursingCarePackages'), packageData);
-        toast({ title: 'تمت الإضافة', description: 'تمت إضافة الباقة بنجاح.' });
-      }
-      
-      await fetchPackages();
+    const packageData = {
+      name: currentPackage.name,
+      price: Number(currentPackage.price),
+      duration: currentPackage.duration || '',
+      description: currentPackage.description || '',
+      features: Array.isArray(currentPackage.features) ? currentPackage.features : ((currentPackage.features as any) || '').split('\n').map((f:string) => f.trim()).filter(Boolean),
+      isPopular: currentPackage.isPopular || false,
+    };
+    
+    const handleSuccess = () => {
+      toast({ title: currentPackage.id ? 'تم التحديث' : 'تمت الإضافة', description: 'تم حفظ الباقة بنجاح.' });
+      fetchPackages();
       setIsDialogOpen(false);
-    } catch (error) {
-      console.error("Error saving package:", error);
-      toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حفظ الباقة.' });
-    } finally {
+      setIsSaving(false);
+    };
+
+    if (currentPackage.id) {
+      const docRef = doc(firestore, 'nursingCarePackages', currentPackage.id);
+      updateDoc(docRef, packageData).then(handleSuccess).catch(serverError => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: packageData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
         setIsSaving(false);
+      });
+    } else {
+      const collectionRef = collection(firestore, 'nursingCarePackages');
+      addDoc(collectionRef, packageData).then(handleSuccess).catch(serverError => {
+        const permissionError = new FirestorePermissionError({
+          path: collectionRef.path,
+          operation: 'create',
+          requestResourceData: packageData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        setIsSaving(false);
+      });
     }
   };
 
   const handleDelete = async (packageId: string) => {
     if(!firestore || !confirm('هل أنت متأكد من رغبتك في حذف هذه الباقة؟')) return;
 
-    try {
-      await deleteDoc(doc(firestore, 'nursingCarePackages', packageId));
-      toast({ title: 'تم الحذف', description: 'تم حذف الباقة بنجاح.' });
-      fetchPackages(); // Re-fetch data
-    } catch (error) {
-      console.error("Error deleting package:", error);
-      toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حذف الباقة.' });
-    }
+    const docRef = doc(firestore, 'nursingCarePackages', packageId);
+    deleteDoc(docRef)
+    .then(() => {
+        toast({ title: 'تم الحذف', description: 'تم حذف الباقة بنجاح.' });
+        fetchPackages(); // Re-fetch data
+    })
+    .catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
   };
   
   const openDialog = (pkg: Partial<NursingPackage> | null = null) => {
