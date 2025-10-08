@@ -93,7 +93,6 @@ export default function LabTestsPage() {
       
       await fetchLabTests();
       setIsDialogOpen(false);
-      setCurrentTest(null);
     } catch (error) {
       console.error("Error saving lab test:", error);
       toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حفظ التحليل.' });

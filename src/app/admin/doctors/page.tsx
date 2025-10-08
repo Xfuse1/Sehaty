@@ -192,7 +192,6 @@ export default function DoctorsPage() {
         setUploadProgress(null);
         setSelectedFile(null);
         setPreviewImage(null);
-        form.reset();
     }
   };
 
@@ -414,5 +413,3 @@ export default function DoctorsPage() {
     </div>
   );
 }
-
-    

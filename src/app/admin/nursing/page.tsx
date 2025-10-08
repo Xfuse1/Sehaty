@@ -98,9 +98,8 @@ export default function NursingPage() {
         toast({ title: 'تمت الإضافة', description: 'تمت إضافة الباقة بنجاح.' });
       }
       
-      fetchPackages(); // Re-fetch data
+      await fetchPackages();
       setIsDialogOpen(false);
-      setCurrentPackage(null);
     } catch (error) {
       console.error("Error saving package:", error);
       toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حفظ الباقة.' });
@@ -231,5 +230,3 @@ export default function NursingPage() {
     </div>
   );
 }
-
-    
