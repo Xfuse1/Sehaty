@@ -133,6 +133,8 @@ export default function DoctorsPage() {
     if (!firestore) return;
     
     setIsDialogOpen(false);
+    const isSaving = form.formState.isSubmitting;
+    if(isSaving) return;
 
     try {
       let imageUrl = data.image || previewImage || `https://picsum.photos/seed/${data.name}/200/200`;
@@ -156,15 +158,15 @@ export default function DoctorsPage() {
 
       if (id) {
         const docRef = doc(firestore, 'doctors', id);
-        updateDocumentNonBlocking(docRef, dataToSave);
+        await updateDoc(docRef, dataToSave);
         toast({ title: 'تم التحديث', description: 'تم تحديث بيانات الطبيب بنجاح.' });
       } else {
         const newDocRef = doc(collection(firestore, 'doctors'));
-        setDocumentNonBlocking(newDocRef, dataToSave);
+        await setDoc(newDocRef, dataToSave);
         toast({ title: 'تمت الإضافة', description: 'تمت إضافة الطبيب بنجاح.' });
       }
       
-      fetchDoctors();
+      await fetchDoctors();
       
     } catch (error) {
       console.error("Error saving doctor:", error);
@@ -393,3 +395,5 @@ export default function DoctorsPage() {
     </div>
   );
 }
+
+    
