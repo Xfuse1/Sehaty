@@ -131,10 +131,6 @@ export default function DoctorsPage() {
 
   const onSubmit = async (data: Doctor) => {
     if (!firestore) return;
-    
-    form.clearErrors();
-    const isSaving = form.formState.isSubmitting;
-    if(isSaving) return;
 
     try {
       let imageUrl = data.image || previewImage || `https://picsum.photos/seed/${data.name}/200/200`;
@@ -393,5 +389,3 @@ export default function DoctorsPage() {
     </div>
   );
 }
-
-    
