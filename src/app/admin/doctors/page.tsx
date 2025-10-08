@@ -3,8 +3,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useFirestore, useStorage } from '@/firebase';
-import { collection, doc, getDocs } from 'firebase/firestore';
-import { setDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, doc, getDocs, deleteDoc } from 'firebase/firestore';
+import { setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
 import {
@@ -131,17 +131,19 @@ export default function DoctorsPage() {
 
   const onSubmit = async (data: Doctor) => {
     if (!firestore) return;
+    
+    setIsDialogOpen(false);
 
     try {
       let imageUrl = data.image || previewImage || `https://picsum.photos/seed/${data.name}/200/200`;
 
       if (selectedFile && storage) {
+        toast({ title: 'جارِ رفع الصورة...' });
         setUploadProgress(0);
         const storageRef = ref(storage, `doctors/${Date.now()}_${selectedFile.name}`);
         const uploadTask = await uploadBytes(storageRef, selectedFile);
-        setUploadProgress(50);
         imageUrl = await getDownloadURL(uploadTask.ref);
-        setUploadProgress(100);
+        toast({ title: 'اكتمل رفع الصورة' });
       }
       
       const doctorData = {
@@ -158,25 +160,27 @@ export default function DoctorsPage() {
         toast({ title: 'تم التحديث', description: 'تم تحديث بيانات الطبيب بنجاح.' });
       } else {
         const newDocRef = doc(collection(firestore, 'doctors'));
-        setDocumentNonBlocking(newDocRef, dataToSave, { merge: false });
+        setDocumentNonBlocking(newDocRef, dataToSave);
         toast({ title: 'تمت الإضافة', description: 'تمت إضافة الطبيب بنجاح.' });
       }
       
       fetchDoctors();
-      setIsDialogOpen(false);
+      
     } catch (error) {
       console.error("Error saving doctor:", error);
       toast({ variant: 'destructive', title: 'خطأ', description: 'حدث خطأ أثناء حفظ بيانات الطبيب.' });
     } finally {
         setUploadProgress(null);
+        form.reset();
     }
   };
+
 
   const handleDelete = async (doctorId: string) => {
     if(!firestore || !confirm('هل أنت متأكد من رغبتك في حذف هذا الطبيب؟')) return;
 
     try {
-      deleteDocumentNonBlocking(doc(firestore, 'doctors', doctorId));
+      await deleteDoc(doc(firestore, 'doctors', doctorId));
       toast({ title: 'تم الحذف', description: 'تم حذف الطبيب بنجاح.' });
       fetchDoctors();
     } catch (error) {
