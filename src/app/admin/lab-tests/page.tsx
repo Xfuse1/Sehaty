@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,32 +24,108 @@ import { Loader2, PlusCircle, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface LabTest {
   id: string;
-  name: string;
-  price: number;
+  TestName: string;
+  Price: number;
+  Description?: string;
+  createdAt?: any;
 }
+
+interface FormData {
+  name: string;
+  price: string;
+  description: string;
+}
+
+const COLLECTION_NAME = 'lab_tests';
 
 export default function LabTestsPage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [labTests, setLabTests] = useState<LabTest[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState<FormData>({
+    name: '',
+    price: '',
+    description: ''
+  });
+
+  const firestore = useFirestore();
+  const labTestsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, COLLECTION_NAME);
+  }, [firestore]);
+
+  const { data: labTests = [], isLoading } = useCollection<LabTest>(labTestsQuery);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [id]: value
+    }));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      price: '',
+      description: ''
+    });
+  };
 
   const handleSave = async () => {
-    setIsSaving(true);
-    toast({ title: 'جاري الحفظ...', description: 'سيتم تفعيل هذه الميزة قريباً.' });
-    setTimeout(() => {
-        setIsSaving(false);
-        setIsDialogOpen(false);
-    }, 1000);
+    if (!firestore) return;
+    
+    try {
+      setIsSaving(true);
+      
+      // Validate required fields
+      if (!formData.name || !formData.price) {
+        toast({
+          variant: 'destructive',
+          title: 'خطأ',
+          description: 'يرجى ملء جميع الحقول المطلوبة'
+        });
+        return;
+      }
+
+      // Create the test document
+      const testData = {
+        TestName: formData.name,
+        Price: parseFloat(formData.price),
+        Description: formData.description || '',
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(firestore, COLLECTION_NAME), testData);
+
+      toast({
+        title: 'تم الحفظ بنجاح',
+        description: 'تمت إضافة التحليل بنجاح'
+      });
+
+      resetForm();
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving lab test:', error);
+      toast({
+        variant: 'destructive',
+        title: 'خطأ',
+        description: 'حدث خطأ أثناء حفظ التحليل'
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
   
   const openDialog = () => {
+    resetForm();
     setIsDialogOpen(true);
-  }
+  };
 
   return (
     <div className="container mx-auto py-12">
@@ -85,11 +161,11 @@ export default function LabTestsPage() {
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                 </TableRow>
-                ) : labTests.length > 0 ? (
+                ) : labTests && labTests.length > 0 ? (
                 labTests.map((test) => (
                     <TableRow key={test.id}>
-                    <TableCell className="font-medium">{test.name}</TableCell>
-                    <TableCell>{test.price} ر.س</TableCell>
+                    <TableCell className="font-medium">{test.TestName}</TableCell>
+                    <TableCell>{test.Price} ر.س</TableCell>
                     <TableCell className="flex gap-2">
                         <Button variant="outline" size="icon" onClick={openDialog}><Edit className="h-4 w-4" /></Button>
                         <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
@@ -117,16 +193,32 @@ export default function LabTestsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="name">اسم التحليل</Label>
-                <Input id="name" />
+                <Input 
+                  id="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  placeholder="أدخل اسم التحليل"
+                />
               </div>
               <div>
                 <Label htmlFor="price">السعر</Label>
-                <Input id="price" type="number" />
+                <Input 
+                  id="price"
+                  type="number"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  placeholder="أدخل السعر بالجنيهات"
+                />
               </div>
             </div>
             <div>
               <Label htmlFor="description">وصف التحليل</Label>
-              <Textarea id="description" />
+              <Textarea 
+                id="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                placeholder="أدخل وصفاً للتحليل (اختياري)"
+              />
             </div>
           </div>
           <DialogFooter>

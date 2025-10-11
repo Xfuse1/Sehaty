@@ -1,28 +1,25 @@
 /**
- * @fileoverview Firestore Security Rules for the Sehaty application.
- *
+ * @fileoverview Firestore Security Rules for the Sehaty application
+ * 
  * Core Philosophy:
  * This ruleset enforces a strict user-ownership model for personal data while allowing public read access to globally available data.
  *
  * Data Structure:
- * - User profiles are stored under `/users/{userId}`.
- * - User-specific data (appointments, lab test bookings) are stored under `/users/{userId}/...`.
+ * - User profiles are stored under '/users/{userId}'.
+ * - User-specific data (appointments, lab test bookings) are stored under '/users/{userId}/...'.
  * - Global data (pharmacies, physiotherapy packages, doctors, clinics, nursing care packages, lab tests) are stored at the top level.
  *
  * Key Security Decisions:
  * - Users can only access their own profile data and their associated subcollections.
  * - Listing of user documents is allowed only for the owner.
  * - Global data is publicly readable but not writable by clients (assumed to be managed by trusted backend).
- *
- * Denormalization for Authorization:
- * - The `/users/{userId}/appointments/{appointmentId}` and `/users/{userId}/labTestBookings/{labTestBookingId}` documents implicitly denormalize the `userId` in the path.
- *
- * Structural Segregation:
- * - User-specific data is stored in subcollections under `/users/{userId}`, separate from global data.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
 
     /**
      * @description Controls access to user profile data.
@@ -64,16 +61,16 @@ service cloud.firestore {
 
     /**
      * @description Controls access to physiotherapy package data.
-     * @path /physiotherapyPackages/{packageId}
+     * @path /physical_therapy/{packageId}
      * @allow (get, list) Allows public read access.
-     * @deny (create, update, delete) Prevents client-side writes.
-     * @principle Allows public reads, restricts writes to authenticated users.
+     * @allow (create, update, delete) If user is authenticated AND has valid data
+     * @principle Allows public reads, restricts writes to authenticated users with valid data
      */
-    match /physiotherapyPackages/{packageId} {
+    match /physical_therapy/{packageId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create, update: if request.auth != null;
+      allow delete: if request.auth != null && (isAdmin() || resource.data.createdBy == request.auth.uid);
     }
-
     /**
      * @description Controls access to appointments for a specific user.
      * @path /users/{userId}/appointments/{appointmentId}
@@ -104,12 +101,12 @@ service cloud.firestore {
      * @description Controls access to doctor data.
      * @path /doctors/{doctorId}
      * @allow (get, list) Allows public read access.
-     * @deny (create, update, delete) Prevents client-side writes.
-     * @principle Allows public reads, restricts writes to authenticated users.
+     * @allow (create, update, delete) Any authenticated user can write.
+     * @principle Allows public reads, allows authenticated users to write.
      */
     match /doctors/{doctorId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create, update, delete: if request.auth != null;
     }
 
     /**
@@ -126,26 +123,28 @@ service cloud.firestore {
 
     /**
      * @description Controls access to nursing care package data.
-     * @path /nursingCarePackages/{packageId}
+     * @path /nursing_care/{packageId}
      * @allow (get, list) Allows public read access.
-     * @deny (create, update, delete) Prevents client-side writes.
-     * @principle Allows public reads, restricts writes to authenticated users.
+     * @allow (create, update, delete) If user is authenticated
+     * @principle Allows public reads, restricts writes to authenticated users
      */
-    match /nursingCarePackages/{packageId} {
+    match /nursing_care/{packageId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create, update: if request.auth != null;
+      allow delete: if request.auth != null && (isAdmin() || resource.data.createdBy == request.auth.uid);
     }
 
     /**
      * @description Controls access to lab test data.
-     * @path /labTests/{labTestId}
+     * @path /lab_tests/{testId}
      * @allow (get, list) Allows public read access.
-     * @deny (create, update, delete) Prevents client-side writes.
-     * @principle Allows public reads, restricts writes to authenticated users.
+     * @allow (create, update, delete) If user is authenticated
+     * @principle Allows public reads, restricts writes to authenticated users
      */
-    match /labTests/{labTestId} {
+    match /lab_tests/{testId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create, update: if request.auth != null;
+      allow delete: if request.auth != null && (isAdmin() || resource.data.createdBy == request.auth.uid);
     }
 
     /**

@@ -11,7 +11,19 @@ import { useToast } from '@/hooks/use-toast';
 import { collection } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 
-interface PhysiotherapyPackage {
+// The shape of the data in Firestore
+interface PhysiotherapyPackageData {
+    id: string;
+    PackageName: string;
+    Price: number;
+    Duration: string;
+    Description?: string;
+    Features?: string;
+    isPopular?: boolean;
+}
+
+// The shape of the data we use in our UI
+interface DisplayPackage {
     id: string;
     name: string;
     price: number;
@@ -29,12 +41,23 @@ export default function PhysiotherapyPage() {
 
     const packagesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
-        return collection(firestore, 'physiotherapyPackages');
+        return collection(firestore, 'physical_therapy');
     }, [firestore]);
 
-    const { data: physiotherapyPackages, isLoading: packagesLoading } = useCollection<Omit<PhysiotherapyPackage, 'id'>>(packagesQuery);
+    const { data: rawPackages = [], isLoading: packagesLoading } = useCollection<PhysiotherapyPackageData>(packagesQuery);
 
-    const handleBooking = (pkg: PhysiotherapyPackage) => {
+    // Transform the raw data into the format we need for display
+    const physiotherapyPackages: DisplayPackage[] = (rawPackages || []).map(pkg => ({
+        id: pkg.id,
+        name: pkg.PackageName || '',
+        price: pkg.Price || 0,
+        duration: pkg.Duration || '',
+        description: pkg.Description || '',
+        features: pkg.Features ? pkg.Features.split('\n').filter(Boolean) : [],
+        isPopular: pkg.isPopular || false
+    }));
+
+    const handleBooking = (pkg: DisplayPackage) => {
         if (!user) {
             toast({
                 variant: 'destructive',
@@ -43,7 +66,17 @@ export default function PhysiotherapyPage() {
             });
             router.push('/login');
         } else {
-            const packageData = encodeURIComponent(JSON.stringify(pkg));
+            // Convert back to the format expected by the booking page
+            const bookingData = {
+                id: pkg.id,
+                PackageName: pkg.name,
+                Price: pkg.price,
+                Duration: pkg.duration,
+                Description: pkg.description,
+                Features: pkg.features.join('\n'),
+                isPopular: pkg.isPopular
+            };
+            const packageData = encodeURIComponent(JSON.stringify(bookingData));
             router.push(`/physiotherapy-booking?package=${packageData}`);
         }
     };

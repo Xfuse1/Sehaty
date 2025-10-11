@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { ChangeEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -27,35 +27,144 @@ import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { useFirestore, useCollection, useMemoFirebase, useFirebase } from '@/firebase';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 type Doctor = {
-  id: string;
+  id?: string;
   name: string;
   specialty: string;
   price: number;
-  image: string;
+  experience?: number;
+  overview?: string;
+  image?: string;
+  rating?: number;
+  reviews?: number;
+  location?: string;
 };
 
 export default function DoctorsPage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const firestore = useFirestore();
+  const { user, isUserLoading } = useFirebase();
+
+  const doctorsQuery = useMemoFirebase(() => {
+    return collection(firestore, 'doctors');
+  }, [firestore]);
+
+  const { data: doctors = [], isLoading } = useCollection<Doctor>(doctorsQuery);
+  const doctorsList = doctors ?? [];
+
+  const createEmptyForm = () => ({
+    name: '',
+    specialty: '',
+    price: '',
+    experience: '',
+    overview: '',
+    image: '',
+  });
+
+  const [formValues, setFormValues] = useState(createEmptyForm);
 
   const openDialog = () => {
     setIsDialogOpen(true);
-  }
+  };
+
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = event.target;
+    setFormValues((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
   const handleSave = async () => {
+    if (isSaving) {
+      return;
+    }
+
+    const trimmedName = formValues.name.trim();
+    const trimmedSpecialty = formValues.specialty.trim();
+    const priceValue = formValues.price.trim();
+    const experienceValue = formValues.experience.trim();
+    const overviewValue = formValues.overview.trim();
+    const imageValue = formValues.image.trim();
+
+    if (!trimmedName || !trimmedSpecialty || !priceValue) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing required fields',
+        description: 'Name, specialty, and consultation fee are required.',
+      });
+      return;
+    }
+
+    const parsedPrice = Number(priceValue);
+    const parsedExperience = experienceValue ? Number(experienceValue) : 0;
+
+    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid consultation fee',
+        description: 'Please enter a valid positive number for the consultation fee.',
+      });
+      return;
+    }
+
+    if (experienceValue && (Number.isNaN(parsedExperience) || parsedExperience < 0)) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid experience value',
+        description: 'Experience must be a positive number.',
+      });
+      return;
+    }
+
     setIsSaving(true);
-    toast({ title: 'جاري الحفظ...', description: 'سيتم تفعيل هذه الميزة قريباً.' });
-    setTimeout(() => {
-        setIsSaving(false);
-        setIsDialogOpen(false);
-    }, 1000);
+
+    try {
+      await addDoc(collection(firestore, 'doctors'), {
+        name: trimmedName,
+        specialty: trimmedSpecialty,
+        price: parsedPrice,
+        experience: parsedExperience,
+        overview: overviewValue,
+        image: imageValue || '/default-avatar.png',
+        rating: 0,
+        reviews: 0,
+        location: '',
+        createdAt: serverTimestamp(),
+        createdBy: user?.uid, // Add the user ID of the creator
+      });
+
+      toast({
+        title: 'Doctor saved',
+        description: 'The doctor has been added successfully.',
+      });
+
+      setFormValues(createEmptyForm());
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to save doctor document', error);
+      toast({
+        variant: 'destructive',
+        title: 'Failed to save data',
+        description: 'Please try again in a moment.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Redirect if not logged in
+  if (!isUserLoading && !user) {
+    // You can also use Next.js redirect here if preferred
+    window.location.href = '/login';
+    return null;
   }
-  
+
   return (
     <div className="container mx-auto py-12">
       <div className="flex justify-between items-center mb-8">
@@ -92,13 +201,16 @@ export default function DoctorsPage() {
                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                 </TableRow>
-                ) : doctors.length > 0 ? (
-                doctors.map((doctor) => (
+                ) : doctorsList.length > 0 ? (
+                doctorsList.map((doctor) => {
+                    const displayImage = doctor.image && doctor.image.trim() !== '' ? doctor.image : '/default-avatar.png';
+                    const altText = doctor.name && doctor.name.trim() !== '' ? `صورة ${doctor.name}` : 'صورة الطبيب';
+                    return (
                     <TableRow key={doctor.id}>
                     <TableCell>
                         <Image
-                            src={doctor.image || '/default-avatar.png'}
-                            alt={doctor.name}
+                            src={displayImage}
+                            alt={altText}
                             width={50}
                             height={50}
                             className="rounded-full object-cover"
@@ -106,13 +218,14 @@ export default function DoctorsPage() {
                     </TableCell>
                     <TableCell className="font-medium">{doctor.name}</TableCell>
                     <TableCell>{doctor.specialty}</TableCell>
-                    <TableCell>{doctor.price} ر.س</TableCell>
+                    <TableCell>{doctor.price}ج.م</TableCell>
                     <TableCell className="flex gap-2">
                         <Button variant="outline" size="icon"><Edit className="h-4 w-4" /></Button>
                         <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
                     </TableCell>
                     </TableRow>
-                ))
+                    );
+                })
                 ) : (
                 <TableRow>
                     <TableCell colSpan={5} className="text-center py-8">
@@ -138,24 +251,57 @@ export default function DoctorsPage() {
               <div className="grid grid-cols-2 gap-4">
                   <div>
                       <Label>اسم الطبيب</Label>
-                      <Input />
+                      <Input
+                        name="name"
+                        value={formValues.name}
+                        onChange={handleInputChange}
+                      />
                   </div>
                   <div>
                       <Label>التخصص</Label>
-                      <Input />
+                      <Input
+                        name="specialty"
+                        value={formValues.specialty}
+                        onChange={handleInputChange}
+                      />
                   </div>
                    <div>
                       <Label>رسوم الكشف</Label>
-                      <Input type="number" />
+                      <Input
+                        type="number"
+                        name="price"
+                        min="0"
+                        value={formValues.price}
+                        onChange={handleInputChange}
+                      />
                   </div>
                   <div>
                       <Label>سنوات الخبرة</Label>
-                      <Input type="number" />
+                      <Input
+                        type="number"
+                        name="experience"
+                        min="0"
+                        value={formValues.experience}
+                        onChange={handleInputChange}
+                      />
                   </div>
               </div>
               <div>
                   <Label>النبذة التعريفية</Label>
-                  <Textarea />
+                  <Textarea
+                    name="overview"
+                    value={formValues.overview}
+                    onChange={handleInputChange}
+                  />
+              </div>
+              <div>
+                  <Label>رابط الصورة (اختياري)</Label>
+                  <Input
+                    name="image"
+                    value={formValues.image}
+                    onChange={handleInputChange}
+                    placeholder="https://example.com/doctor.jpg"
+                  />
               </div>
           </div>
           <DialogFooter className="mt-4 pt-4 border-t">

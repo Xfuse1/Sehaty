@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,33 +24,118 @@ import { Loader2, PlusCircle, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface NursingPackage {
   id: string;
-  name: string;
-  price: number;
-  duration: string;
+  PackageName: string;
+  Price: number;
+  Duration: string;
+  Description?: string;
+  Features?: string;
+  createdAt?: any;
 }
+
+interface FormData {
+  name: string;
+  price: string;
+  duration: string;
+  description: string;
+  features: string;
+}
+
+const COLLECTION_NAME = 'nursing_care';
 
 export default function NursingPage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [packages, setPackages] = useState<NursingPackage[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState<FormData>({
+    name: '',
+    price: '',
+    duration: '',
+    description: '',
+    features: ''
+  });
+  
+  const firestore = useFirestore();
+  const packagesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, COLLECTION_NAME);
+  }, [firestore]);
+
+  const { data: packages = [], isLoading } = useCollection<NursingPackage>(packagesQuery);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [id]: value
+    }));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      price: '',
+      duration: '',
+      description: '',
+      features: ''
+    });
+  };
 
   const handleSave = async () => {
-    setIsSaving(true);
-    toast({ title: 'جاري الحفظ...', description: 'سيتم تفعيل هذه الميزة قريباً.' });
-    setTimeout(() => {
-        setIsSaving(false);
-        setIsDialogOpen(false);
-    }, 1000);
+    if (!firestore) return;
+    
+    try {
+      setIsSaving(true);
+      
+      // Validate required fields
+      if (!formData.name || !formData.price || !formData.duration) {
+        toast({
+          variant: 'destructive',
+          title: 'خطأ',
+          description: 'يرجى ملء جميع الحقول المطلوبة'
+        });
+        return;
+      }
+
+      // Create the package document
+      const packageData = {
+        PackageName: formData.name,
+        Price: parseFloat(formData.price),
+        Duration: formData.duration,
+        Description: formData.description,
+        Features: formData.features,
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(firestore, COLLECTION_NAME), packageData);
+
+      toast({
+        title: 'تم الحفظ بنجاح',
+        description: 'تمت إضافة الباقة بنجاح'
+      });
+
+      resetForm();
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving package:', error);
+      toast({
+        variant: 'destructive',
+        title: 'خطأ',
+        description: 'حدث خطأ أثناء حفظ الباقة'
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
   
   const openDialog = () => {
+    resetForm();
     setIsDialogOpen(true);
-  }
+  };
 
   return (
     <div className="container mx-auto py-12">
@@ -87,12 +172,12 @@ export default function NursingPage() {
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                 </TableRow>
-                ) : packages.length > 0 ? (
+                ) : packages && packages.length > 0 ? (
                 packages.map((pkg) => (
                     <TableRow key={pkg.id}>
-                    <TableCell className="font-medium">{pkg.name}</TableCell>
-                    <TableCell>{pkg.price} ر.س</TableCell>
-                    <TableCell>{pkg.duration}</TableCell>
+                    <TableCell className="font-medium">{pkg.PackageName}</TableCell>
+                    <TableCell>{pkg.Price} ر.س</TableCell>
+                    <TableCell>{pkg.Duration}</TableCell>
                     <TableCell className="flex gap-2">
                         <Button variant="outline" size="icon" onClick={openDialog}><Edit className="h-4 w-4" /></Button>
                         <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
@@ -120,24 +205,50 @@ export default function NursingPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="name">اسم الباقة</Label>
-                <Input id="name" />
+                <Input 
+                  id="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  placeholder="مثال: باقة الرعاية اليومية"
+                />
               </div>
               <div>
                 <Label htmlFor="price">السعر</Label>
-                <Input id="price" type="number" />
+                <Input 
+                  id="price"
+                  type="number"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  placeholder="أدخل السعر بالريال"
+                />
               </div>
             </div>
             <div>
               <Label htmlFor="duration">المدة (مثال: زيارة يومية)</Label>
-              <Input id="duration" />
+              <Input 
+                id="duration"
+                value={formData.duration}
+                onChange={handleInputChange}
+                placeholder="مثال: زيارة يومية، زيارة أسبوعية"
+              />
             </div>
             <div>
               <Label htmlFor="description">وصف الباقة</Label>
-              <Textarea id="description" />
+              <Textarea 
+                id="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                placeholder="أدخل وصفاً مفصلاً للباقة"
+              />
             </div>
             <div>
               <Label htmlFor="features">المميزات (كل ميزة في سطر)</Label>
-              <Textarea id="features" />
+              <Textarea 
+                id="features"
+                value={formData.features}
+                onChange={handleInputChange}
+                placeholder="أدخل مميزات الباقة - ميزة واحدة في كل سطر"
+              />
             </div>
           </div>
           <DialogFooter>
