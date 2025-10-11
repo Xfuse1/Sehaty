@@ -46,8 +46,8 @@ export default function Header() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   
-  // This is a temporary solution for admin check during development.
-  const isAdmin = user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',');
+  const isAdmin = user?.email ? adminEmails.includes(user.email) : false;
 
   const handleLogout = async () => {
     if (auth) {

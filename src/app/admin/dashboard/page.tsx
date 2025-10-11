@@ -12,15 +12,19 @@ import Link from 'next/link';
 export default function AdminDashboardPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  
-  // Admin access is now granted to any logged-in user for easier development.
-  const isAdmin = !!user;
+
+  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',');
+  const isAdmin = user?.email ? adminEmails.includes(user.email) : false;
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
+    if (!isUserLoading) {
+      if (!user) {
+        router.push('/login');
+      } else if (!isAdmin) {
+        router.push('/'); // Redirect non-admin users to homepage
+      }
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, isAdmin]);
 
   if (isUserLoading || !isAdmin) {
     return (
@@ -34,10 +38,10 @@ export default function AdminDashboardPage() {
                 </CardHeader>
                 <CardContent>
                     <p className="text-muted-foreground">
-                        يجب عليك تسجيل الدخول للوصول إلى هذه الصفحة.
+                        ليس لديك الصلاحية للوصول إلى هذه الصفحة.
                     </p>
                     <Button asChild className="mt-6">
-                        <Link href="/login">تسجيل الدخول</Link>
+                        <Link href="/">العودة للرئيسية</Link>
                     </Button>
                 </CardContent>
             </Card>
