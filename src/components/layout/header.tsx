@@ -46,7 +46,7 @@ export default function Header() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   
-  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',');
+  const adminEmails = ["cveeezg@gmail.com"];
   const isAdmin = user?.email ? adminEmails.includes(user.email) : false;
 
   const handleLogout = async () => {

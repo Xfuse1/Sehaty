@@ -13,7 +13,7 @@ export default function AdminDashboardPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
 
-  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',');
+  const adminEmails = ["cveeezg@gmail.com"];
   const isAdmin = user?.email ? adminEmails.includes(user.email) : false;
 
   useEffect(() => {
