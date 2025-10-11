@@ -88,27 +88,34 @@ function PhysiotherapyBookingFlow() {
 
         const bookingId = `physiobooking_${Date.now()}`;
         const bookingDetails = {
-            id: bookingId,
+            bookingId: bookingId,
             packageId: pkg.id,
-            packageName: pkg.name,
-            packagePrice: pkg.price,
+            packageName: pkg.PackageName || pkg.name, // Handle both new and old package format
+            packagePrice: pkg.Price || pkg.price,
             serviceType: 'physiotherapy',
             userId: user.uid,
+            userEmail: user.email,
             patientName: patientDetails.name,
             patientPhone: patientDetails.phone,
             patientAddress: patientDetails.address,
-            patientAge: patientDetails.age,
+            patientAge: parseInt(patientDetails.age) || 0,
             caseDescription: patientDetails.caseDescription,
             paymentMethod: paymentMethod,
-            status: 'pending_confirmation',
+            status: 'pending',
             createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
         };
 
+        // Store in user's bookings subcollection
         const userBookingRef = doc(firestore, "users", user.uid, "bookings", bookingId);
-        setDocumentNonBlocking(userBookingRef, bookingDetails, { merge: true });
+        setDocumentNonBlocking(userBookingRef, {
+            ...bookingDetails,
+            type: 'physiotherapy',
+        }, { merge: true });
 
-        const adminBookingRef = doc(firestore, "bookings", bookingId);
-        setDocumentNonBlocking(adminBookingRef, bookingDetails, { merge: true });
+        // Store in main physiotherapy bookings collection
+        const physiotherapyBookingRef = doc(firestore, "physiotherapy_bookings", bookingId);
+        setDocumentNonBlocking(physiotherapyBookingRef, bookingDetails, { merge: true });
 
         toast({
             title: "تم استلام طلب الحجز",
@@ -133,7 +140,7 @@ function PhysiotherapyBookingFlow() {
         ${bookingDetails.caseDescription}
 
         *تفاصيل الطلب:*
-        - رقم الطلب: ${bookingDetails.id}
+        - رقم الطلب: ${bookingDetails.bookingId}
         - طريقة الدفع: ${bookingDetails.paymentMethod === 'cash' ? 'عند تقديم الخدمة' : 'أونلاين'}
         `;
 
@@ -260,7 +267,7 @@ function PhysiotherapyBookingFlow() {
                                 <p className="text-muted-foreground text-xs mb-4">{pkg.description}</p>
                                 <div className="flex justify-between mt-4 pt-4 border-t">
                                     <span className="text-muted-foreground font-bold">سعر الباقة:</span>
-                                    <span className="font-bold text-lg text-primary">{pkg.price} ر.س</span>
+                                    <span className="font-bold text-lg text-primary">{pkg.price} جنيهاً</span>
                                 </div>
                            </div>
                            <Button 
