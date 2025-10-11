@@ -1,14 +1,11 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useFirestore } from '@/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -27,112 +24,31 @@ import { Loader2, PlusCircle, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 interface NursingPackage {
-  id?: string;
+  id: string;
   name: string;
   price: number;
   duration: string;
-  description: string;
-  features: string[];
-  isPopular: boolean;
 }
 
 export default function NursingPage() {
-  const firestore = useFirestore();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentPackage, setCurrentPackage] = useState<Partial<NursingPackage> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [packages, setPackages] = useState<NursingPackage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  async function fetchPackages() {
-    if (!firestore) return;
-    try {
-      setIsLoading(true);
-      const packagesCol = collection(firestore, 'nursingCarePackages');
-      const packagesSnapshot = await getDocs(packagesCol);
-      const packagesList = packagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as NursingPackage));
-      setPackages(packagesList);
-    } catch (error) {
-      console.error("Failed to fetch packages:", error);
-      toast({
-        variant: "destructive",
-        title: "خطأ في جلب الباقات",
-        description: "لم نتمكن من تحميل قائمة الباقات. يرجى المحاولة مرة أخرى.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchPackages();
-  }, [firestore]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSave = async () => {
-    if (!currentPackage || !currentPackage.name || !currentPackage.price || !firestore) {
-      toast({ variant: 'destructive', title: 'خطأ', description: 'يرجى ملء الحقول المطلوبة.' });
-      return;
-    }
-    
     setIsSaving(true);
-
-    const packageData = {
-      name: currentPackage.name,
-      price: Number(currentPackage.price),
-      duration: currentPackage.duration || '',
-      description: currentPackage.description || '',
-      features: Array.isArray(currentPackage.features) ? currentPackage.features : ((currentPackage.features as any) || '').split('\n').map((f:string) => f.trim()).filter(Boolean),
-      isPopular: currentPackage.isPopular || false,
-    };
-    
-    try {
-        if (currentPackage.id) {
-            const docRef = doc(firestore, 'nursingCarePackages', currentPackage.id);
-            await updateDoc(docRef, packageData);
-        } else {
-            const collectionRef = collection(firestore, 'nursingCarePackages');
-            await addDoc(collectionRef, packageData);
-        }
-        toast({ title: currentPackage.id ? 'تم التحديث' : 'تمت الإضافة', description: 'تم حفظ الباقة بنجاح.' });
-        fetchPackages();
-        setIsDialogOpen(false);
-    } catch(serverError) {
-        const docRef = currentPackage.id ? doc(firestore, 'nursingCarePackages', currentPackage.id) : doc(collection(firestore, 'nursingCarePackages'));
-        const permissionError = new FirestorePermissionError({
-            path: docRef.path,
-            operation: currentPackage.id ? 'update' : 'create',
-            requestResourceData: packageData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-    } finally {
+    toast({ title: 'جاري الحفظ...', description: 'سيتم تفعيل هذه الميزة قريباً.' });
+    setTimeout(() => {
         setIsSaving(false);
-    }
-  };
-
-  const handleDelete = async (packageId: string) => {
-    if(!firestore || !confirm('هل أنت متأكد من رغبتك في حذف هذه الباقة؟')) return;
-
-    const docRef = doc(firestore, 'nursingCarePackages', packageId);
-    try {
-        await deleteDoc(docRef);
-        toast({ title: 'تم الحذف', description: 'تم حذف الباقة بنجاح.' });
-        fetchPackages(); // Re-fetch data
-    } catch(serverError) {
-        const permissionError = new FirestorePermissionError({
-            path: docRef.path,
-            operation: 'delete',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-    }
+        setIsDialogOpen(false);
+    }, 1000);
   };
   
-  const openDialog = (pkg: Partial<NursingPackage> | null = null) => {
-    setCurrentPackage(pkg || { name: '', price: 0, duration: '', description: '', features: [], isPopular: false });
+  const openDialog = () => {
     setIsDialogOpen(true);
   }
 
@@ -143,7 +59,7 @@ export default function NursingPage() {
             <h1 className="text-3xl font-bold font-headline text-primary">إدارة باقات الرعاية التمريضية</h1>
             <p className="text-muted-foreground mt-1">إضافة وتعديل وحذف باقات الرعاية التمريضية.</p>
         </div>
-        <Button onClick={() => openDialog()}>
+        <Button onClick={openDialog}>
           <PlusCircle className="ml-2 h-5 w-5" />
           إضافة باقة جديدة
         </Button>
@@ -178,8 +94,8 @@ export default function NursingPage() {
                     <TableCell>{pkg.price} ر.س</TableCell>
                     <TableCell>{pkg.duration}</TableCell>
                     <TableCell className="flex gap-2">
-                        <Button variant="outline" size="icon" onClick={() => openDialog(pkg)}><Edit className="h-4 w-4" /></Button>
-                        <Button variant="destructive" size="icon" onClick={() => pkg.id && handleDelete(pkg.id)}><Trash2 className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="icon" onClick={openDialog}><Edit className="h-4 w-4" /></Button>
+                        <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
                     </TableCell>
                     </TableRow>
                 ))
@@ -198,34 +114,30 @@ export default function NursingPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>{currentPackage?.id ? 'تعديل باقة' : 'إضافة باقة جديدة'}</DialogTitle>
+            <DialogTitle>إضافة باقة جديدة</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="name">اسم الباقة</Label>
-                <Input id="name" value={currentPackage?.name || ''} onChange={(e) => setCurrentPackage({...currentPackage, name: e.target.value})} />
+                <Input id="name" />
               </div>
               <div>
                 <Label htmlFor="price">السعر</Label>
-                <Input id="price" type="number" value={currentPackage?.price || ''} onChange={(e) => setCurrentPackage({...currentPackage, price: Number(e.target.value)})} />
+                <Input id="price" type="number" />
               </div>
             </div>
             <div>
               <Label htmlFor="duration">المدة (مثال: زيارة يومية)</Label>
-              <Input id="duration" value={currentPackage?.duration || ''} onChange={(e) => setCurrentPackage({...currentPackage, duration: e.target.value})} />
+              <Input id="duration" />
             </div>
             <div>
               <Label htmlFor="description">وصف الباقة</Label>
-              <Textarea id="description" value={currentPackage?.description || ''} onChange={(e) => setCurrentPackage({...currentPackage, description: e.target.value})} />
+              <Textarea id="description" />
             </div>
             <div>
               <Label htmlFor="features">المميزات (كل ميزة في سطر)</Label>
-              <Textarea id="features" value={Array.isArray(currentPackage?.features) ? currentPackage.features.join('\n') : ''} onChange={(e) => setCurrentPackage({...currentPackage, features: e.target.value.split('\n')})} />
-            </div>
-            <div className="flex items-center space-x-2">
-                <input type="checkbox" id="isPopular" className="accent-primary" checked={currentPackage?.isPopular || false} onChange={(e) => setCurrentPackage({...currentPackage, isPopular: e.target.checked})} />
-                <Label htmlFor="isPopular">هل هذه الباقة هي الأكثر طلباً؟</Label>
+              <Textarea id="features" />
             </div>
           </div>
           <DialogFooter>

@@ -1,77 +1,18 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, DocumentData } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Calendar, Clock, User, Phone, BadgeDollarSign, ShieldPlus, HeartPulse, Stethoscope } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-interface Booking extends DocumentData {
-  id: string;
-  patientName: string;
-  patientPhone: string;
-  createdAt: string;
-  serviceType: 'physiotherapy' | 'nursing_care' | 'doctor_appointment';
-  status: 'confirmed' | 'pending_confirmation' | 'completed' | 'cancelled';
-  packageName?: string;
-  doctorName?: string;
-  appointmentDate?: string;
-  appointmentTime?: string;
-}
-
-const getServiceIcon = (serviceType: string) => {
-    switch (serviceType) {
-        case 'physiotherapy':
-            return <HeartPulse className="h-5 w-5 text-blue-500" />;
-        case 'nursing_care':
-            return <ShieldPlus className="h-5 w-5 text-green-500" />;
-        default:
-            return <Stethoscope className="h-5 w-5 text-purple-500" />;
-    }
-}
-
-const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-        case 'confirmed':
-            return 'default';
-        case 'completed':
-            return 'secondary';
-        case 'cancelled':
-            return 'destructive';
-        case 'pending_confirmation':
-            return 'outline';
-        default:
-            return 'outline';
-    }
-}
-const getStatusBadgeText = (status: string) => {
-    switch (status) {
-        case 'confirmed':
-            return 'مؤكد';
-        case 'completed':
-            return 'مكتمل';
-        case 'cancelled':
-            return 'ملغي';
-        case 'pending_confirmation':
-            return 'قيد التأكيد';
-        default:
-            return status;
-    }
-}
-
-
 export default function BookingsPage() {
-  const firestore = useFirestore();
+  const isLoading = false;
+  const bookings: any[] = [];
 
-  const bookingsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'bookings'), orderBy('createdAt', 'desc'));
-  }, [firestore]);
-
-  const { data: bookings, isLoading } = useCollection<Booking>(bookingsQuery);
+  const getServiceIcon = (serviceType: string) => <span></span>;
+  const getStatusBadgeVariant = (status: string) => 'outline';
+  const getStatusBadgeText = (status: string) => status;
 
   return (
     <div className="container mx-auto py-12">
@@ -125,7 +66,7 @@ export default function BookingsPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8">
-                    لا توجد حجوزات حالياً.
+                    لا توجد حجوزات حالياً. (سيتم تفعيل هذه الميزة عند ربطها بقاعدة البيانات)
                   </TableCell>
                 </TableRow>
               )}
