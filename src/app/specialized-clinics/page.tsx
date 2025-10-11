@@ -1,67 +1,96 @@
 
 "use client"
 
-import { useEffect, useState } from 'react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
-import { useToast } from '@/hooks/use-toast';
-import { initialSpecializedClinics, SpecializedClinic, siteContentPaths } from '@/lib/site-content-data';
+import { useState, useEffect } from 'react';
+import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
+import { collection, DocumentData } from 'firebase/firestore';
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
-import { Loader2 } from 'lucide-react';
+import { Loader2, GraduationCap, Briefcase, Star, Info, Calendar as CalendarIcon, User, Phone, MapPin } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+
+interface Doctor extends DocumentData {
+    id: string;
+    name: string;
+    specialty: string;
+    rating: number;
+    reviews: number;
+    experience: number;
+    location: string;
+    price: number;
+    image: string;
+    bio: string;
+}
 
 export default function SpecializedClinicsPage() {
-    const [clinics, setClinics] = useState<SpecializedClinic[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const firestore = useFirestore();
+    const { user } = useUser();
+    const router = useRouter();
     const { toast } = useToast();
 
-    useEffect(() => {
-        async function fetchClinics() {
-            if (!firestore) return;
-            
-            const docRef = doc(firestore, 'siteContent', siteContentPaths.specializedClinics);
+    const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+    const [isBooking, setIsBooking] = useState(false);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState<string>("cash");
 
-            try {
-                setIsLoading(true);
-                const docSnap = await getDoc(docRef);
+    const doctorsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'doctors');
+    }, [firestore]);
 
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    // Assuming the data is stored in a field called 'clinicsList'
-                    if (data.clinicsList && Array.isArray(data.clinicsList)) {
-                        setClinics(data.clinicsList);
-                    } else {
-                         // If the field is missing or not an array, use initial data
-                        setClinics(initialSpecializedClinics);
-                    }
-                } else {
-                    // If the document doesn't exist, create it with the initial data
-                    console.log("Document not found. Creating with initial data.");
-                    await setDoc(docRef, { clinicsList: initialSpecializedClinics });
-                    setClinics(initialSpecializedClinics);
-                    toast({
-                        title: "تم إعداد المحتوى",
-                        description: "تم إنشاء بيانات العيادات المتخصصة لأول مرة.",
-                    });
-                }
-            } catch (error) {
-                console.error("Error fetching or creating clinics data:", error);
-                toast({
-                    variant: "destructive",
-                    title: "حدث خطأ",
-                    description: "فشل في جلب بيانات العيادات. سنستخدم البيانات الافتراضية.",
-                });
-                // Fallback to initial data on error
-                setClinics(initialSpecializedClinics);
-            } finally {
-                setIsLoading(false);
-            }
+    const { data: doctors, isLoading } = useCollection<Doctor>(doctorsQuery);
+
+    const handleBookNowClick = (doctor: Doctor) => {
+        if (!user) {
+            toast({
+                variant: 'destructive',
+                title: 'مطلوب تسجيل الدخول',
+                description: 'يجب تسجيل الدخول أولاً لتتمكن من حجز موعد.',
+            });
+            router.push('/login');
+        } else {
+            setSelectedDoctor(doctor);
+            setIsDialogOpen(true);
         }
+    };
+    
+    const handleConfirmBooking = () => {
+        if(!selectedDoctor) return;
+        
+        setIsBooking(true);
+        // Simulate booking process
+        setTimeout(() => {
+            setIsBooking(false);
+            setIsDialogOpen(false);
+            toast({
+                title: 'تم الحجز بنجاح!',
+                description: `تم تأكيد موعدك مع د. ${selectedDoctor.name}.`,
+            });
+             const doctorData = encodeURIComponent(JSON.stringify(selectedDoctor));
+             router.push(`/booking?doctor=${doctorData}`);
+        }, 1500);
+    }
 
-        fetchClinics();
-    }, [firestore, toast]);
+    const groupedDoctors = useMemoFirebase(() => {
+        if (!doctors) return {};
+        return doctors.reduce((acc, doctor) => {
+            const specialty = doctor.specialty;
+            if (!acc[specialty]) {
+                acc[specialty] = [];
+            }
+            acc[specialty].push(doctor);
+            return acc;
+        }, {} as Record<string, Doctor[]>);
+    }, [doctors]) || {};
+
 
     return (
         <div className="bg-background text-foreground">
@@ -84,32 +113,104 @@ export default function SpecializedClinicsPage() {
                     <div className="flex justify-center items-center h-64">
                         <Loader2 className="h-12 w-12 animate-spin text-primary" />
                     </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {clinics.map((clinic) => (
-                            <Card key={clinic.id} className="overflow-hidden group transition-shadow hover:shadow-xl">
-                                <CardHeader className="p-0">
-                                    <div className="relative w-full h-56">
-                                        <Image
-                                            src={clinic.image}
-                                            alt={clinic.name}
-                                            fill
-                                            style={{ objectFit: 'cover' }}
-                                            className="transition-transform duration-500 group-hover:scale-110"
-                                        />
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-6">
-                                    <CardTitle className="text-2xl font-bold text-primary mb-2">{clinic.name}</CardTitle>
-                                    <p className="text-muted-foreground">
-                                        {clinic.description}
-                                    </p>
-                                </CardContent>
-                            </Card>
+                ) : Object.keys(groupedDoctors).length > 0 ? (
+                    <div className="space-y-16">
+                        {Object.entries(groupedDoctors).map(([specialty, docs]) => (
+                            <section key={specialty}>
+                                <h2 className="text-3xl font-bold font-headline text-foreground mb-8 border-r-4 border-primary pr-4">{specialty}</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                    {docs.map(doctor => (
+                                        <Card key={doctor.id} className="overflow-hidden group transition-shadow hover:shadow-xl flex flex-col">
+                                            <CardHeader className="flex flex-row items-center gap-4 p-4">
+                                                <Image src={doctor.image} alt={doctor.name} width={80} height={80} className="rounded-full border-4 border-primary/10" data-ai-hint="doctor portrait" />
+                                                <div className="w-full">
+                                                    <CardTitle className="text-lg text-primary">{doctor.name}</CardTitle>
+                                                    <p className="text-sm text-muted-foreground">{doctor.specialty}</p>
+                                                     <div className="flex items-center gap-1 text-amber-500 text-xs mt-1">
+                                                        <Star className="w-4 h-4 fill-current" />
+                                                        <span className="font-bold">{doctor.rating}</span>
+                                                        <span className="text-muted-foreground">({doctor.reviews} مراجعة)</span>
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-4 pt-0 flex-grow">
+                                                <Accordion type="single" collapsible>
+                                                    <AccordionItem value="item-1" className="border-0">
+                                                        <AccordionTrigger className="text-sm py-2 hover:no-underline justify-start gap-2">
+                                                            <Info className="h-4 w-4" /> عرض التفاصيل
+                                                        </AccordionTrigger>
+                                                        <AccordionContent className="text-sm text-muted-foreground space-y-2 pt-2">
+                                                            <p className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-primary/70" /> {doctor.experience} سنوات خبرة</p>
+                                                            <p className="flex items-center gap-2"><GraduationCap className="h-4 w-4 text-primary/70" /> {doctor.bio}</p>
+                                                        </AccordionContent>
+                                                    </AccordionItem>
+                                                </Accordion>
+                                            </CardContent>
+                                            <div className="p-4 bg-muted/50 mt-auto">
+                                                <Button className="w-full" onClick={() => handleBookNowClick(doctor)}>
+                                                    احجز الآن مقابل {doctor.price} ر.س
+                                                </Button>
+                                            </div>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </section>
                         ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-16 text-muted-foreground">
+                        <p>لا يوجد أطباء متاحون في العيادات المتخصصة حالياً.</p>
+                        <p>يرجى التحقق من <Link href="/doctors-directory" className="text-primary underline">دليل الأطباء العام</Link>.</p>
                     </div>
                 )}
             </main>
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>تأكيد الحجز مع د. {selectedDoctor?.name}</DialogTitle>
+                        <DialogDescription>
+                            أنت على وشك حجز موعد. يرجى إدخال بياناتك واختيار طريقة الدفع.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="patient-name">اسم المريض</Label>
+                            <Input id="patient-name" defaultValue={user?.displayName || ''} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="patient-phone">رقم الهاتف</Label>
+                            <Input id="patient-phone" defaultValue={user?.phoneNumber || ''} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>طريقة الدفع</Label>
+                             <RadioGroup defaultValue="cash" onValueChange={setPaymentMethod}>
+                                <div className="flex items-center space-x-2 space-x-reverse">
+                                    <RadioGroupItem value="visa" id="r-visa" />
+                                    <Label htmlFor="r-visa" className="flex-grow cursor-pointer">
+                                        الدفع بالبطاقة (Visa/Mastercard)
+                                        <Badge variant="default" className="mr-2 text-xs">يضمن تأكيد الموعد</Badge>
+                                    </Label>
+                                </div>
+                                <div className="flex items-center space-x-2 space-x-reverse mt-2">
+                                    <RadioGroupItem value="cash" id="r-cash" />
+                                    <Label htmlFor="r-cash" className="flex-grow cursor-pointer">الدفع عند الوصول للعيادة</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>إلغاء</Button>
+                        <Button onClick={handleConfirmBooking} disabled={isBooking}>
+                            {isBooking && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                            {isBooking ? 'جارِ التأكيد...' : `تأكيد الحجز`}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
         </div>
     );
 }
+
+    
