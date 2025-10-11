@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, DocumentData } from 'firebase/firestore';
 import { Badge } from "@/components/ui/badge";
@@ -79,7 +79,7 @@ export default function SpecializedClinicsPage() {
         }, 1500);
     }
 
-    const groupedDoctors = useMemoFirebase(() => {
+    const groupedDoctors: Record<string, Doctor[]> = useMemo(() => {
         if (!doctors) return {};
         return doctors.reduce((acc, doctor) => {
             const specialty = doctor.specialty;
@@ -89,7 +89,7 @@ export default function SpecializedClinicsPage() {
             acc[specialty].push(doctor);
             return acc;
         }, {} as Record<string, Doctor[]>);
-    }, [doctors]) || {};
+    }, [doctors]);
 
 
     return (
@@ -141,7 +141,7 @@ export default function SpecializedClinicsPage() {
                                                         </AccordionTrigger>
                                                         <AccordionContent className="text-sm text-muted-foreground space-y-2 pt-2">
                                                             <p className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-primary/70" /> {doctor.experience} سنوات خبرة</p>
-                                                            <p className="flex items-center gap-2"><GraduationCap className="h-4 w-4 text-primary/70" /> {doctor.bio}</p>
+                                                            <p className="flex items-start gap-2"><GraduationCap className="h-4 w-4 text-primary/70 mt-1" /> {doctor.bio}</p>
                                                         </AccordionContent>
                                                     </AccordionItem>
                                                 </Accordion>
@@ -160,7 +160,7 @@ export default function SpecializedClinicsPage() {
                 ) : (
                     <div className="text-center py-16 text-muted-foreground">
                         <p>لا يوجد أطباء متاحون في العيادات المتخصصة حالياً.</p>
-                        <p>يرجى التحقق من <Link href="/doctors-directory" className="text-primary underline">دليل الأطباء العام</Link>.</p>
+                        <p>يرجى التحقق من <a href="/doctors-directory" className="text-primary underline">دليل الأطباء العام</a>.</p>
                     </div>
                 )}
             </main>
@@ -212,5 +212,3 @@ export default function SpecializedClinicsPage() {
         </div>
     );
 }
-
-    
