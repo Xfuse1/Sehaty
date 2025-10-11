@@ -1,12 +1,12 @@
 
-"use client"
+'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, DocumentData } from 'firebase/firestore';
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Image from "next/image";
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Image from 'next/image';
 import { Loader2, GraduationCap, Briefcase, Star, Info, Calendar as CalendarIcon, User, Phone, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -82,7 +82,7 @@ export default function SpecializedClinicsPage() {
     const groupedDoctors: Record<string, Doctor[]> = useMemo(() => {
         if (!doctors) return {};
         return doctors.reduce((acc, doctor) => {
-            const specialty = doctor.specialty;
+            const specialty = doctor.specialty || "غير مصنف";
             if (!acc[specialty]) {
                 acc[specialty] = [];
             }
