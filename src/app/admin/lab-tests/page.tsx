@@ -83,35 +83,27 @@ export default function LabTestsPage() {
       description: currentTest.description || '',
     };
     
-    const handleSuccess = () => {
-      toast({ title: currentTest.id ? 'تم التحديث' : 'تمت الإضافة', description: 'تم حفظ التحليل بنجاح.' });
-      fetchLabTests();
-      setIsDialogOpen(false);
-      setIsSaving(false);
-    }
-
-    if (currentTest.id) {
-      const docRef = doc(firestore, 'labTests', currentTest.id);
-      updateDoc(docRef, testData).then(handleSuccess).catch(serverError => {
+    try {
+        if (currentTest.id) {
+            const docRef = doc(firestore, 'labTests', currentTest.id);
+            await updateDoc(docRef, testData);
+        } else {
+            const collectionRef = collection(firestore, 'labTests');
+            await addDoc(collectionRef, testData);
+        }
+        toast({ title: currentTest.id ? 'تم التحديث' : 'تمت الإضافة', description: 'تم حفظ التحليل بنجاح.' });
+        fetchLabTests();
+        setIsDialogOpen(false);
+    } catch(serverError) {
+        const docRef = currentTest.id ? doc(firestore, 'labTests', currentTest.id) : doc(collection(firestore, 'labTests'));
         const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'update',
-          requestResourceData: testData,
+            path: docRef.path,
+            operation: currentTest.id ? 'update' : 'create',
+            requestResourceData: testData,
         });
         errorEmitter.emit('permission-error', permissionError);
+    } finally {
         setIsSaving(false);
-      });
-    } else {
-      const collectionRef = collection(firestore, 'labTests');
-      addDoc(collectionRef, testData).then(handleSuccess).catch(serverError => {
-        const permissionError = new FirestorePermissionError({
-          path: collectionRef.path,
-          operation: 'create',
-          requestResourceData: testData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        setIsSaving(false);
-      });
     }
   };
 
@@ -119,18 +111,17 @@ export default function LabTestsPage() {
     if(!firestore || !confirm('هل أنت متأكد من رغبتك في حذف هذا التحليل؟')) return;
 
     const docRef = doc(firestore, 'labTests', testId);
-    deleteDoc(docRef)
-    .then(() => {
+    try {
+        await deleteDoc(docRef);
         toast({ title: 'تم الحذف', description: 'تم حذف التحليل بنجاح.' });
         fetchLabTests();
-    })
-    .catch((serverError) => {
+    } catch(serverError) {
         const permissionError = new FirestorePermissionError({
             path: docRef.path,
             operation: 'delete',
         });
         errorEmitter.emit('permission-error', permissionError);
-    });
+    }
   };
   
   const openDialog = (test: Partial<LabTest> | null = null) => {
@@ -228,3 +219,5 @@ export default function LabTestsPage() {
     </div>
   );
 }
+
+    

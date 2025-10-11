@@ -90,35 +90,27 @@ export default function PhysiotherapyPage() {
       isPopular: currentPackage.isPopular || false,
     };
 
-    const handleSuccess = () => {
-      toast({ title: currentPackage.id ? 'تم التحديث' : 'تمت الإضافة', description: 'تم حفظ الباقة بنجاح.' });
-      fetchPackages();
-      setIsDialogOpen(false);
-      setIsSaving(false);
-    };
-
-    if (currentPackage.id) {
-      const docRef = doc(firestore, 'physiotherapyPackages', currentPackage.id);
-      updateDoc(docRef, packageData).then(handleSuccess).catch(serverError => {
+    try {
+        if (currentPackage.id) {
+            const docRef = doc(firestore, 'physiotherapyPackages', currentPackage.id);
+            await updateDoc(docRef, packageData);
+        } else {
+            const collectionRef = collection(firestore, 'physiotherapyPackages');
+            await addDoc(collectionRef, packageData);
+        }
+        toast({ title: currentPackage.id ? 'تم التحديث' : 'تمت الإضافة', description: 'تم حفظ الباقة بنجاح.' });
+        fetchPackages();
+        setIsDialogOpen(false);
+    } catch(serverError) {
+        const docRef = currentPackage.id ? doc(firestore, 'physiotherapyPackages', currentPackage.id) : doc(collection(firestore, 'physiotherapyPackages'));
         const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'update',
-          requestResourceData: packageData,
+            path: docRef.path,
+            operation: currentPackage.id ? 'update' : 'create',
+            requestResourceData: packageData,
         });
         errorEmitter.emit('permission-error', permissionError);
+    } finally {
         setIsSaving(false);
-      });
-    } else {
-      const collectionRef = collection(firestore, 'physiotherapyPackages');
-      addDoc(collectionRef, packageData).then(handleSuccess).catch(serverError => {
-        const permissionError = new FirestorePermissionError({
-          path: collectionRef.path,
-          operation: 'create',
-          requestResourceData: packageData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        setIsSaving(false);
-      });
     }
   };
 
@@ -126,18 +118,17 @@ export default function PhysiotherapyPage() {
     if(!firestore || !confirm('هل أنت متأكد من رغبتك في حذف هذه الباقة؟')) return;
 
     const docRef = doc(firestore, 'physiotherapyPackages', packageId);
-    deleteDoc(docRef)
-    .then(() => {
+    try {
+        await deleteDoc(docRef);
         toast({ title: 'تم الحذف', description: 'تم حذف الباقة بنجاح.' });
         fetchPackages(); // Re-fetch data
-    })
-    .catch((serverError) => {
+    } catch(serverError) {
         const permissionError = new FirestorePermissionError({
             path: docRef.path,
             operation: 'delete',
         });
         errorEmitter.emit('permission-error', permissionError);
-    });
+    }
   };
   
   const openDialog = (pkg: Partial<PhysiotherapyPackage> | null = null) => {
@@ -249,3 +240,5 @@ export default function PhysiotherapyPage() {
     </div>
   );
 }
+
+    

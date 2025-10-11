@@ -156,8 +156,6 @@ export default function DoctorsPage() {
 
   const onSubmit = async (data: Doctor) => {
     if (!firestore) return;
-
-    form.control.markAsSubmitting(true);
     
     let imageUrl = form.getValues('image') || previewImage || `https://picsum.photos/seed/${data.name}/200/200`;
 
@@ -168,7 +166,6 @@ export default function DoctorsPage() {
         toast({ title: 'اكتمل رفع الصورة' });
       } catch (error) {
         toast({ variant: 'destructive', title: 'خطأ في رفع الصورة', description: 'حدث خطأ أثناء رفع الصورة.' });
-        form.control.markAsSubmitting(false);
         return;
       }
     }
@@ -181,39 +178,32 @@ export default function DoctorsPage() {
     
     const { id, ...dataToSave } = doctorData;
 
-    const handleSuccess = () => {
-      toast({ title: id ? 'تم التحديث' : 'تمت الإضافة', description: `تم حفظ بيانات الطبيب بنجاح.` });
-      fetchDoctors();
-      setIsDialogOpen(false);
-    }
+    try {
+        if (id) {
+          const docRef = doc(firestore, 'doctors', id);
+          await updateDoc(docRef, dataToSave);
+        } else {
+          const newDocRef = doc(collection(firestore, 'doctors'));
+          await setDoc(newDocRef, dataToSave);
+        }
+        
+        toast({ title: id ? 'تم التحديث' : 'تمت الإضافة', description: `تم حفظ بيانات الطبيب بنجاح.` });
+        fetchDoctors();
+        setIsDialogOpen(false);
 
-    if (id) {
-      const docRef = doc(firestore, 'doctors', id);
-      updateDoc(docRef, dataToSave).then(handleSuccess).catch(serverError => {
-          const permissionError = new FirestorePermissionError({
+    } catch (serverError) {
+        const docRef = id ? doc(firestore, 'doctors', id) : doc(collection(firestore, 'doctors'));
+        const permissionError = new FirestorePermissionError({
             path: docRef.path,
-            operation: 'update',
+            operation: id ? 'update' : 'create',
             requestResourceData: dataToSave,
-          });
-          errorEmitter.emit('permission-error', permissionError);
-      });
-    } else {
-      const newDocRef = doc(collection(firestore, 'doctors'));
-      setDoc(newDocRef, dataToSave).then(handleSuccess).catch(serverError => {
-          const permissionError = new FirestorePermissionError({
-            path: newDocRef.path,
-            operation: 'create',
-            requestResourceData: dataToSave,
-          });
-          errorEmitter.emit('permission-error', permissionError);
-      });
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    } finally {
+        setUploadProgress(null);
+        setSelectedFile(null);
+        setPreviewImage(null);
     }
-    
-    // Reset states after submission process starts
-    setUploadProgress(null);
-    setSelectedFile(null);
-    setPreviewImage(null);
-    form.control.markAsSubmitting(false);
   };
 
 
@@ -221,18 +211,17 @@ export default function DoctorsPage() {
     if(!firestore || !confirm('هل أنت متأكد من رغبتك في حذف هذا الطبيب؟')) return;
 
     const docRef = doc(firestore, 'doctors', doctorId);
-    deleteDoc(docRef)
-    .then(() => {
+    try {
+        await deleteDoc(docRef);
         toast({ title: 'تم الحذف', description: 'تم حذف الطبيب بنجاح.' });
         fetchDoctors();
-    })
-    .catch((serverError) => {
+    } catch (serverError) {
         const permissionError = new FirestorePermissionError({
             path: docRef.path,
             operation: 'delete',
         });
         errorEmitter.emit('permission-error', permissionError);
-    });
+    }
   };
   
   const openDialog = (doctor: Partial<Doctor> | null = null) => {
@@ -439,3 +428,5 @@ export default function DoctorsPage() {
     </div>
   );
 }
+
+    
