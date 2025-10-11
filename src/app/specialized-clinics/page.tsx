@@ -1,26 +1,14 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, DocumentData } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 
-interface Doctor extends DocumentData {
-    id: string;
-    name: string;
-    specialty: string;
-}
-
 export default function SpecializedClinicsPage() {
-    const firestore = useFirestore();
-    const { data: doctors, isLoading } = useCollection<Doctor>(
-        useMemoFirebase(() => {
-            if (!firestore) return null;
-            return query(collection(firestore, 'doctors'));
-        }, [firestore])
-    );
+    // Temporarily disabled Firestore fetching
+    const isLoading = false;
+    const doctors: any[] = [];
 
     return (
         <div className="container mx-auto py-12">
@@ -52,7 +40,7 @@ export default function SpecializedClinicsPage() {
                 ) : (
                     <div className="text-center py-16 text-muted-foreground">
                         <p>لا يوجد أطباء متاحون حالياً.</p>
-                        <p className="text-sm">يرجى إضافتهم من خلال لوحة التحكم.</p>
+                        <p className="text-sm">سيتم تفعيل هذه الميزة قريباً. يمكنك إضافة الأطباء من خلال لوحة التحكم.</p>
                     </div>
                 )}
             </main>
