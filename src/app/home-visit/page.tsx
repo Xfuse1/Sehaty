@@ -1,14 +1,12 @@
 
 "use client"
 
-import { useState, useEffect } from 'react';
-import { useUser, useFirestore } from '@/firebase';
+import { useState } from 'react';
+import { useUser } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { doc } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Loader2, PhoneCall, Bot, Sparkles, ShieldCheck, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,27 +16,15 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function HomeVisitPage() {
     const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
     const { toast } = useToast();
     const [isBooking, setIsBooking] = useState(false);
     const [patientDetails, setPatientDetails] = useState({
-        name: '',
-        phone: '',
+        name: user?.displayName || '',
+        phone: user?.phoneNumber || '',
         address: '',
         age: '',
         caseDescription: '',
     });
-
-    // Update patient details when user data becomes available
-    useEffect(() => {
-        if (user && !isUserLoading) {
-            setPatientDetails(prev => ({
-                ...prev,
-                name: user.displayName || prev.name,
-                phone: user.phoneNumber || prev.phone,
-            }));
-        }
-    }, [user, isUserLoading]);
 
     const whatsappLink = "https://wa.me/201211886649";
     const emergencyPhoneNumber = "01212451294";
@@ -56,33 +42,22 @@ export default function HomeVisitPage() {
             return;
         }
 
-        const timestamp = new Date().toISOString();
-        const bookingId = `homevisit_${timestamp.replace(/[-:.]/g, '')}`; // More stable ID format
+        const bookingId = `homevisit_${Date.now()}`;
         const bookingDetails = {
-            bookingId: bookingId,
+            id: bookingId,
             serviceType: 'home_visit',
             userId: user.uid,
-            userEmail: user.email,
             patientName: patientDetails.name,
             patientPhone: patientDetails.phone,
             patientAddress: patientDetails.address,
-            patientAge: parseInt(patientDetails.age) || 0,
+            patientAge: patientDetails.age,
             caseDescription: patientDetails.caseDescription,
-            status: 'pending',
+            status: 'pending_confirmation',
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
         };
 
-        // Store in user's bookings subcollection
-        const userBookingRef = doc(firestore, "users", user.uid, "bookings", bookingId);
-        setDocumentNonBlocking(userBookingRef, {
-            ...bookingDetails,
-            type: 'home_visit',
-        }, { merge: true });
-
-        // Store in main home visits collection
-        const homeVisitRef = doc(firestore, "home_visits", bookingId);
-        setDocumentNonBlocking(homeVisitRef, bookingDetails, { merge: true });
+        // Here you might want to save the request to Firestore as well, similar to other booking pages.
+        // For now, it directly goes to WhatsApp as requested.
 
         toast({
             title: "تم استلام طلبك",
@@ -102,7 +77,7 @@ export default function HomeVisitPage() {
         ${bookingDetails.caseDescription}
 
         *تفاصيل الطلب:*
-        - رقم الطلب: ${bookingDetails.bookingId}
+        - رقم الطلب: ${bookingDetails.id}
         `;
 
         const encodedMessage = encodeURIComponent(message.trim());
@@ -113,14 +88,6 @@ export default function HomeVisitPage() {
         setTimeout(() => {
             setIsBooking(false);
         }, 5000);
-    }
-
-    if (isUserLoading) {
-        return (
-            <div className="container py-12 flex justify-center items-center min-h-screen">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        );
     }
 
     return (
@@ -149,14 +116,12 @@ export default function HomeVisitPage() {
                                 لا تتردد بالاتصال بنا مباشرة للحالات العاجلة والحرجة.
                             </AlertDescription>
                         </div>
-                        {typeof window !== 'undefined' && (
-                            <Button asChild size="lg" className="mt-4 sm:mt-0 sm:mr-auto animate-pulse">
-                                <a href={`tel:${emergencyPhoneNumber}`}>
-                                    <PhoneCall className="ml-2 h-5 w-5" />
-                                    اتصال طوارئ
-                                </a>
-                            </Button>
-                        )}
+                        <Button asChild size="lg" className="mt-4 sm:mt-0 sm:mr-auto animate-pulse">
+                            <a href={`tel:${emergencyPhoneNumber}`}>
+                                <PhoneCall className="ml-2 h-5 w-5" />
+                                اتصال طوارئ
+                            </a>
+                        </Button>
                     </Alert>
 
                     <Card className="shadow-xl border-t-4 border-primary">

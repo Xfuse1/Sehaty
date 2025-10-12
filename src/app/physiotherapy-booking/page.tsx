@@ -77,7 +77,7 @@ function PhysiotherapyBookingFlow() {
         setIsBooking(true);
         
         if (!user) {
-             toast({
+            toast({
                 variant: "destructive",
                 title: "خطأ",
                 description: "يجب تسجيل الدخول أولاً.",
@@ -86,36 +86,39 @@ function PhysiotherapyBookingFlow() {
             return;
         }
 
+        if (!pkg || (!pkg.name && !pkg.PackageName)) {
+            toast({
+                variant: "destructive",
+                title: "خطأ",
+                description: "لم يتم العثور على بيانات الباقة. يرجى المحاولة مرة أخرى.",
+            });
+            setIsBooking(false);
+            return;
+        }
+
         const bookingId = `physiobooking_${Date.now()}`;
         const bookingDetails = {
             bookingId: bookingId,
-            packageId: pkg.id,
-            packageName: pkg.PackageName || pkg.name, // Handle both new and old package format
-            packagePrice: pkg.Price || pkg.price,
+            packageId: pkg?.id,
+            packageName: pkg?.name || pkg?.PackageName, // Handle both name formats
+            packagePrice: pkg?.price || pkg?.Price, // Handle both price formats
             serviceType: 'physiotherapy',
             userId: user.uid,
-            userEmail: user.email,
             patientName: patientDetails.name,
             patientPhone: patientDetails.phone,
             patientAddress: patientDetails.address,
-            patientAge: parseInt(patientDetails.age) || 0,
+            patientAge: patientDetails.age,
             caseDescription: patientDetails.caseDescription,
             paymentMethod: paymentMethod,
-            status: 'pending',
+            status: 'pending_confirmation',
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
         };
 
-        // Store in user's bookings subcollection
         const userBookingRef = doc(firestore, "users", user.uid, "bookings", bookingId);
-        setDocumentNonBlocking(userBookingRef, {
-            ...bookingDetails,
-            type: 'physiotherapy',
-        }, { merge: true });
+        setDocumentNonBlocking(userBookingRef, bookingDetails, { merge: true });
 
-        // Store in main physiotherapy bookings collection
-        const physiotherapyBookingRef = doc(firestore, "physiotherapy_bookings", bookingId);
-        setDocumentNonBlocking(physiotherapyBookingRef, bookingDetails, { merge: true });
+        const adminBookingRef = doc(firestore, "physiotherapy_bookings", bookingId);
+        setDocumentNonBlocking(adminBookingRef, bookingDetails, { merge: true });
 
         toast({
             title: "تم استلام طلب الحجز",
@@ -267,7 +270,7 @@ function PhysiotherapyBookingFlow() {
                                 <p className="text-muted-foreground text-xs mb-4">{pkg.description}</p>
                                 <div className="flex justify-between mt-4 pt-4 border-t">
                                     <span className="text-muted-foreground font-bold">سعر الباقة:</span>
-                                    <span className="font-bold text-lg text-primary">{pkg.price} جنيهاً</span>
+                                    <span className="font-bold text-lg text-primary">{pkg.price} ر.س</span>
                                 </div>
                            </div>
                            <Button 

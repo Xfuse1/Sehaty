@@ -106,7 +106,7 @@ function NursingCareBookingFlow() {
         const userBookingRef = doc(firestore, "users", user.uid, "bookings", bookingId);
         setDocumentNonBlocking(userBookingRef, bookingDetails, { merge: true });
 
-        const adminBookingRef = doc(firestore, "bookings", bookingId);
+        const adminBookingRef = doc(firestore, "nursing_care_bookings", bookingId);
         setDocumentNonBlocking(adminBookingRef, bookingDetails, { merge: true });
 
         toast({
@@ -138,7 +138,7 @@ function NursingCareBookingFlow() {
         const encodedMessage = encodeURIComponent(message);
         const finalWhatsappUrl = `${whatsappLink}?text=${encodedMessage}`;
 
-        window.location.href = finalWhatsappUrl;
+        //-------window.location.href = finalWhatsappUrl;
 
         setTimeout(() => {
             setIsBooking(false);

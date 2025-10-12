@@ -28,10 +28,21 @@ export default function NursingCarePage() {
 
     const packagesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
-        return collection(firestore, 'nursingCarePackages');
+        return collection(firestore, 'nursing_care');
     }, [firestore]);
 
-    const { data: nursingPackages, isLoading: packagesLoading } = useCollection<Omit<NursingPackage, 'id'>>(packagesQuery);
+    const { data: rawPackages, isLoading: packagesLoading } = useCollection(packagesQuery);
+
+    // Transform the raw data to match our interface
+    const nursingPackages = rawPackages?.map(doc => ({
+        id: doc.id,
+        name: doc.PackageName || '',
+        price: doc.Price || 0,
+        duration: doc.Duration || '',
+        description: doc.Description || '',
+        features: doc.Features ? doc.Features.split('\n').filter(Boolean) : [],
+        isPopular: doc.isPopular || false
+    }));
 
     const handleBooking = (pkg: NursingPackage) => {
         if (!user) {
@@ -91,7 +102,7 @@ export default function NursingCarePage() {
                                 <CardContent className="flex-grow">
                                     <p className="text-center text-muted-foreground mb-6">{pkg.description}</p>
                                     <ul className="space-y-3 text-sm">
-                                        {pkg.features.map((feature, index) => (
+                                        {pkg.features.map((feature: string, index: number) => (
                                             <li key={index} className="flex items-center gap-3">
                                                 <CheckCircle className="h-5 w-5 text-green-500" />
                                                 <span className="flex-1">{feature}</span>
