@@ -4,7 +4,16 @@ const AIRTABLE_PATIENTS_TABLE = 'Patients Images';
 
 export const savePatientPrescription = async (patientId: string, patientName: string, imageUrl: string) => {
   try {
-    console.log('Saving to Airtable with data:', { patientId, patientName, imageUrl });
+    if (!AIRTABLE_TOKEN || !AIRTABLE_BASE_ID) {
+      throw new Error('Airtable configuration is missing. Please check your environment variables.');
+    }
+
+    console.log('Saving to Airtable with data:', { 
+      patientId, 
+      patientName, 
+      baseId: AIRTABLE_BASE_ID,
+      table: AIRTABLE_PATIENTS_TABLE 
+    });
     
     const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_PATIENTS_TABLE}`, {
       method: 'POST',
