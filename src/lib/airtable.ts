@@ -1,5 +1,5 @@
-const AIRTABLE_TOKEN = 'patdY7UWLUxinpwUW.f570ca2ced2658324371846d25d7bd84b6f8c5e406b2270b87f4710a4d19d92c';
-const AIRTABLE_BASE_ID = 'appq8kl7k1W5U00Ig';
+const AIRTABLE_TOKEN = process.env.NEXT_PUBLIC_AIRTABLE_TOKEN;
+const AIRTABLE_BASE_ID = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID;
 const AIRTABLE_TABLE = 'Doctors Images';
 
 export const saveToAirtable = async (doctorId: string, doctorName: string, imageUrl: string) => {
