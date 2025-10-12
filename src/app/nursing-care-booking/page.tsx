@@ -138,7 +138,7 @@ function NursingCareBookingFlow() {
         const encodedMessage = encodeURIComponent(message);
         const finalWhatsappUrl = `${whatsappLink}?text=${encodedMessage}`;
 
-        //-------window.location.href = finalWhatsappUrl;
+        window.location.href = finalWhatsappUrl;
 
         setTimeout(() => {
             setIsBooking(false);

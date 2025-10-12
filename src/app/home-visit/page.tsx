@@ -1,11 +1,13 @@
 
 "use client"
 
-import { useState } from 'react';
-import { useUser } from '@/firebase';
+import { useState, useEffect } from 'react';
+import { useUser, useFirestore } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { doc } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Label } from '@/components/ui/label';
 import { Loader2, PhoneCall, Bot, Sparkles, ShieldCheck, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -16,15 +18,26 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function HomeVisitPage() {
     const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
     const { toast } = useToast();
     const [isBooking, setIsBooking] = useState(false);
     const [patientDetails, setPatientDetails] = useState({
-        name: user?.displayName || '',
-        phone: user?.phoneNumber || '',
+        name: '',
+        phone: '',
         address: '',
         age: '',
         caseDescription: '',
     });
+
+    useEffect(() => {
+        if (user) {
+            setPatientDetails(prev => ({
+                ...prev,
+                name: user.displayName || '',
+                phone: user.phoneNumber || ''
+            }));
+        }
+    }, [user]);
 
     const whatsappLink = "https://wa.me/201211886649";
     const emergencyPhoneNumber = "01212451294";
@@ -56,8 +69,13 @@ export default function HomeVisitPage() {
             createdAt: new Date().toISOString(),
         };
 
-        // Here you might want to save the request to Firestore as well, similar to other booking pages.
-        // For now, it directly goes to WhatsApp as requested.
+        // Save to user's bookings subcollection
+        const userBookingRef = doc(firestore, "users", user.uid, "bookings", bookingId);
+        setDocumentNonBlocking(userBookingRef, bookingDetails, { merge: true });
+
+        // Save to home_visits collection
+        const visitRef = doc(firestore, "home_visits", bookingId);
+        setDocumentNonBlocking(visitRef, bookingDetails, { merge: true });
 
         toast({
             title: "تم استلام طلبك",
@@ -83,7 +101,7 @@ export default function HomeVisitPage() {
         const encodedMessage = encodeURIComponent(message.trim());
         const finalWhatsappUrl = `${whatsappLink}?text=${encodedMessage}`;
 
-        window.location.href = finalWhatsappUrl;
+       //-- window.location.href = finalWhatsappUrl;
 
         setTimeout(() => {
             setIsBooking(false);
