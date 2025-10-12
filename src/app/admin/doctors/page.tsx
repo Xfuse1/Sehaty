@@ -1,8 +1,10 @@
 
 'use client';
 
-import { ChangeEvent, useState } from 'react';
+import { ChangeEvent, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { uploadToCloudinary } from '@/lib/cloudinary';
+import { saveToAirtable } from '@/lib/airtable';
 import {
   Dialog,
   DialogContent,
@@ -66,7 +68,9 @@ export default function DoctorsPage() {
     image: '',
   });
 
-  const [formValues, setFormValues] = useState(createEmptyForm);
+  const [formValues, setFormValues] = useState(createEmptyForm());
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openDialog = () => {
     setIsDialogOpen(true);
@@ -125,19 +129,32 @@ export default function DoctorsPage() {
     setIsSaving(true);
 
     try {
-      await addDoc(collection(firestore, 'doctors'), {
+      let finalImageUrl = '/images/default-avatar.png';
+      
+      // Upload image to Cloudinary if selected
+      if (selectedFile) {
+        finalImageUrl = await uploadToCloudinary(selectedFile);
+      }
+
+      // Add doctor to Firestore
+      const docRef = await addDoc(collection(firestore, 'doctors'), {
         name: trimmedName,
         specialty: trimmedSpecialty,
         price: parsedPrice,
         experience: parsedExperience,
         overview: overviewValue,
-        image: imageValue || '/default-avatar.png',
+        image: finalImageUrl,
         rating: 0,
         reviews: 0,
         location: '',
         createdAt: serverTimestamp(),
-        createdBy: user?.uid, // Add the user ID of the creator
+        createdBy: user?.uid,
       });
+
+      // Save to Airtable if image was uploaded
+      if (finalImageUrl !== '/images/default-avatar.png') {
+        await saveToAirtable(docRef.id, trimmedName, finalImageUrl);
+      }
 
       toast({
         title: 'Doctor saved',
@@ -203,7 +220,7 @@ export default function DoctorsPage() {
                 </TableRow>
                 ) : doctorsList.length > 0 ? (
                 doctorsList.map((doctor) => {
-                    const displayImage = doctor.image && doctor.image.trim() !== '' ? doctor.image : '/default-avatar.png';
+                    const displayImage = doctor.image && doctor.image.trim() !== '' ? doctor.image : '/images/default-avatar.png';
                     const altText = doctor.name && doctor.name.trim() !== '' ? `صورة ${doctor.name}` : 'صورة الطبيب';
                     return (
                     <TableRow key={doctor.id}>
@@ -295,13 +312,47 @@ export default function DoctorsPage() {
                   />
               </div>
               <div>
-                  <Label>رابط الصورة (اختياري)</Label>
-                  <Input
-                    name="image"
-                    value={formValues.image}
-                    onChange={handleInputChange}
-                    placeholder="https://example.com/doctor.jpg"
-                  />
+                  <Label>صورة الطبيب</Label>
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      ref={fileInputRef}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setSelectedFile(file);
+                          // Preview the image
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setFormValues(prev => ({
+                              ...prev,
+                              image: reader.result as string
+                            }));
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      اختر صورة
+                    </Button>
+                    {formValues.image && (
+                      <div className="relative w-12 h-12">
+                        <Image
+                          src={formValues.image}
+                          alt="Doctor preview"
+                          fill
+                          className="rounded-full object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
               </div>
           </div>
           <DialogFooter className="mt-4 pt-4 border-t">

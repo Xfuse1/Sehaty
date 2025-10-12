@@ -4,6 +4,8 @@
 import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useUser, useFirestore } from '@/firebase';
+import { uploadToCloudinary } from '@/lib/cloudinary';
+import { savePatientPrescription } from '@/lib/patient-records';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,12 +66,44 @@ function PhysiotherapyBookingFlow() {
         }
     }, [searchParams, pkg]);
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            setFileName(file.name);
-            // Here you would handle the file upload process
-            toast({ title: "تم اختيار الملف", description: file.name });
+            try {
+                setFileName(file.name);
+                toast({ title: "جاري رفع الملف", description: "يرجى الانتظار..." });
+                
+                // Upload to Cloudinary
+                const imageUrl = await uploadToCloudinary(file);
+                
+                if (!user) {
+                    toast({
+                        variant: "destructive",
+                        title: "خطأ",
+                        description: "يجب تسجيل الدخول أولاً.",
+                    });
+                    return;
+                }
+
+                // Save to Airtable Patients Images
+                await savePatientPrescription(
+                    user.uid,
+                    patientDetails.name,
+                    imageUrl
+                );
+
+                toast({ 
+                    title: "تم رفع الملف بنجاح", 
+                    description: "تم حفظ الروشتة في قاعدة البيانات" 
+                });
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                toast({
+                    variant: "destructive",
+                    title: "خطأ في رفع الملف",
+                    description: "يرجى المحاولة مرة أخرى",
+                });
+            }
         }
     };
     
