@@ -54,10 +54,14 @@ export default function DoctorsDirectoryPage() {
         }
     };
     
-    const filteredDoctors = (doctors || []).filter(doc => 
-        doc.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        doc.specialty.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredDoctors = (doctors || []).filter(doc => {
+        const searchTermLower = searchTerm.toLowerCase();
+        const doctorName = doc.name || '';
+        const doctorSpecialty = doc.specialty || '';
+        
+        return doctorName.toLowerCase().includes(searchTermLower) || 
+               doctorSpecialty.toLowerCase().includes(searchTermLower);
+    });
 
     return (
         <div className="bg-background text-foreground">

@@ -97,11 +97,13 @@ function BookingFlow() {
             createdAt: new Date().toISOString(),
         };
 
+        // Save to user's bookings subcollection
         const userBookingRef = doc(firestore, "users", user.uid, "bookings", bookingId);
         setDocumentNonBlocking(userBookingRef, bookingDetails, { merge: true });
 
-        const adminBookingRef = doc(firestore, "bookings", bookingId);
-        setDocumentNonBlocking(adminBookingRef, bookingDetails, { merge: true });
+        // Save to doctor_bookings collection for admin access
+        const doctorBookingRef = doc(firestore, "doctor_bookings", bookingId);
+        setDocumentNonBlocking(doctorBookingRef, bookingDetails, { merge: true });
 
 
         // Simulate API call
