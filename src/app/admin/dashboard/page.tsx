@@ -134,7 +134,20 @@ export default function AdminDashboardPage() {
             </Button>
           </CardContent>
         </Card>
-
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-lg font-medium">اإدارة العمليات</CardTitle>
+            <Stethoscope className="h-6 w-6 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <CardDescription>
+              التحكم في قائمة العمليات و الاطباء الذي يقومون بها
+            </CardDescription>
+            <Button asChild className="mt-4">
+              <Link href="/admin/doctors">إدارة العمليات</Link>
+            </Button>
+          </CardContent>
+        </Card>
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg font-medium">الإعدادات العامة</CardTitle>
