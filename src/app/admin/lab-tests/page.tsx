@@ -25,7 +25,17 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface LabTest {
   id: string;
@@ -47,11 +57,42 @@ export default function LabTestsPage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [testToDelete, setTestToDelete] = useState<LabTest | null>(null);
   const [formData, setFormData] = useState<FormData>({
     name: '',
     price: '',
     description: ''
   });
+
+  const handleDelete = async (test: LabTest) => {
+    setTestToDelete(test);
+  };
+
+  const confirmDelete = async () => {
+    if (!testToDelete?.id || !firestore) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete from Firestore
+      await deleteDoc(doc(firestore, COLLECTION_NAME, testToDelete.id));
+      
+      toast({
+        title: "تم الحذف",
+        description: "تم حذف التحليل بنجاح",
+      });
+    } catch (error) {
+      console.error('Error deleting lab test:', error);
+      toast({
+        variant: "destructive",
+        title: "خطأ في الحذف",
+        description: "حدث خطأ أثناء حذف التحليل. حاول مرة أخرى.",
+      });
+    } finally {
+      setIsDeleting(false);
+      setTestToDelete(null);
+    }
+  };
 
   const firestore = useFirestore();
   const labTestsQuery = useMemoFirebase(() => {
@@ -168,7 +209,18 @@ export default function LabTestsPage() {
                     <TableCell>{test.Price} ر.س</TableCell>
                     <TableCell className="flex gap-2">
                         <Button variant="outline" size="icon" onClick={openDialog}><Edit className="h-4 w-4" /></Button>
-                        <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
+                        <Button 
+                          variant="destructive" 
+                          size="icon"
+                          onClick={() => handleDelete(test)}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting && testToDelete?.id === test.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
                     </TableCell>
                     </TableRow>
                 ))
@@ -181,6 +233,34 @@ export default function LabTestsPage() {
                 )}
             </TableBody>
             </Table>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={!!testToDelete} onOpenChange={() => setTestToDelete(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>هل أنت متأكد من حذف هذا التحليل؟</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    سيتم حذف تحليل "{testToDelete?.TestName}" نهائياً. هذا الإجراء لا يمكن التراجع عنه.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={confirmDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                        جارِ الحذف...
+                      </>
+                    ) : (
+                      'تأكيد الحذف'
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
         </CardContent>
       </Card>
 
