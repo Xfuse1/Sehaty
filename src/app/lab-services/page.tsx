@@ -12,6 +12,10 @@ import Link from "next/link";
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { useUser } from '@/firebase';
+import { useFirestore } from '@/firebase';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { uploadToCloudinary } from '@/lib/cloudinary';
+import { savePatientPrescription } from '@/lib/patient-records';
 
 const commonTests = [
   {
@@ -62,6 +66,8 @@ export default function LabServicesPage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, isUserLoading } = useUser();
+  const db = useFirestore();
+  const [testDescription, setTestDescription] = useState("");
 
   const handlePrescriptionRequest = () => {
     const message = `أرغب في الاستفسار عن تحليل طبي من خلال روشتة مرفقة.`;
@@ -75,11 +81,67 @@ export default function LabServicesPage() {
     window.open(`${whatsappLink}?text=${encodedMessage}`, '_blank');
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const saveLabRequest = async (data: {
+    userId: string;
+    userName: string;
+    testDescription: string;  // Make it required
+    prescriptionUrl: string;  // Make it required
+  }) => {
+    try {
+      const labRequestsRef = collection(db, 'lab-requests');
+      
+      // Create document with all fields
+      await addDoc(labRequestsRef, {
+        userId: data.userId,
+        userName: data.userName,
+        testDescription: data.testDescription,
+        prescriptionUrl: data.prescriptionUrl,
+        createdAt: Timestamp.now(),
+        status: 'pending'
+      });
+    } catch (error) {
+      console.error('Error saving lab request:', error);
+      throw error;
+    }
+  };
+
+  // Store the uploaded image URL
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-        toast({ title: "تم اختيار الملف", description: `تم اختيار ملف ${file.name}. سيتم إرساله عبر واتساب.` });
-        handlePrescriptionRequest();
+    if (!file) return;
+
+    try {
+      if (!user) {
+        toast({
+          variant: "destructive",
+          title: "خطأ في تحميل الملف",
+          description: "يجب تسجيل الدخول أولاً",
+        });
+        return;
+      }
+
+      toast({ 
+        title: "جاري تحميل الملف", 
+        description: "يرجى الانتظار..." 
+      });
+
+      // Upload to Cloudinary and store URL
+      const imageUrl = await uploadToCloudinary(file);
+      setUploadedImageUrl(imageUrl);
+      
+      toast({ 
+        title: "تم رفع الملف بنجاح", 
+        description: "يمكنك الآن إضافة وصف للتحليل والضغط على زر التواصل" 
+      });
+    } catch (error) {
+      console.error('Error handling file:', error);
+      toast({
+        variant: "destructive",
+        title: "خطأ في تحميل الملف",
+        description: "حدث خطأ أثناء تحميل الملف. يرجى المحاولة مرة أخرى."
+      });
     }
   };
 
@@ -117,15 +179,77 @@ export default function LabServicesPage() {
                             <span>ارفع صورة الروشتة</span>
                              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,.pdf"/>
                         </Button>
-                         <Textarea placeholder="أو اكتب أسماء التحاليل المطلوبة هنا..." className="min-h-[108px] text-base"/>
+                         <Textarea 
+                            placeholder="أو اكتب أسماء التحاليل المطلوبة هنا..." 
+                            className="min-h-[108px] text-base"
+                            value={testDescription}
+                            onChange={(e) => {
+                              const newValue = e.target.value;
+                              console.log('Textarea onChange:', { newValue });
+                              setTestDescription(newValue);
+                            }}
+                         />
                     </div>
                     <div className="flex flex-col items-center justify-center text-center gap-4">
                         <p className="text-muted-foreground">سيتم تحويلك إلى واتساب لاستكمال الطلب مع المختص.</p>
-                        <Button asChild size="lg" className="w-full text-lg">
-                            <Link href={`${whatsappLink}?text=${encodeURIComponent("أرغب في طلب تحليل عبر الواتساب")}`} target="_blank">
-                                <Bot className="ml-2 h-6 w-6" />
-                                تواصل وابدأ الطلب
-                            </Link>
+                        <Button 
+                            size="lg" 
+                            className="w-full text-lg"
+                            onClick={async () => {
+                              try {
+                                if (!user) {
+                                  toast({
+                                    variant: "destructive",
+                                    title: "خطأ",
+                                    description: "يجب تسجيل الدخول أولاً",
+                                  });
+                                  return;
+                                }
+
+                                // Get user display name
+                                const userName = user.displayName || user.email || user.phoneNumber || user.uid;
+                                
+                                // Save to Firebase if we have an image or description
+                                if (uploadedImageUrl || testDescription) {
+                                  // Save to Firebase
+                                  await saveLabRequest({
+                                    userId: user.uid,
+                                    userName: userName,
+                                    prescriptionUrl: uploadedImageUrl || '',
+                                    testDescription: testDescription.trim() || 'No description provided'
+                                  });
+
+                                  // If we have an image, save to Airtable as well
+                                  if (uploadedImageUrl) {
+                                    await savePatientPrescription(
+                                      user.uid,
+                                      userName,
+                                      uploadedImageUrl
+                                    );
+                                  }
+                                }
+
+                                // Open WhatsApp
+                                const message = testDescription 
+                                  ? `أرغب في طلب تحليل:\n${testDescription}`
+                                  : "أرغب في طلب تحليل عبر الواتساب";
+                                window.open(`${whatsappLink}?text=${encodeURIComponent(message)}`, '_blank');
+
+                                // Clear the form
+                                setTestDescription("");
+                                setUploadedImageUrl(null);
+                              } catch (error) {
+                                console.error('Error saving request:', error);
+                                toast({
+                                  variant: "destructive",
+                                  title: "خطأ في حفظ الطلب",
+                                  description: "حدث خطأ أثناء حفظ الطلب. يرجى المحاولة مرة أخرى."
+                                });
+                              }
+                            }}
+                        >
+                            <Bot className="ml-2 h-6 w-6" />
+                            تواصل وابدأ الطلب
                         </Button>
                     </div>
                 </div>
