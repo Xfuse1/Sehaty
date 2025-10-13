@@ -4,6 +4,8 @@
 import { useRef, useState } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { uploadToCloudinary } from '@/lib/cloudinary';
+import { savePatientPrescription } from '@/lib/patient-records';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
@@ -62,6 +64,7 @@ export default function RadiologyPage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, isUserLoading } = useUser();
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleRequest = (serviceName: string) => {
     const message = `أرغب في حجز موعد لعمل "${serviceName}" في المنزل.`;
@@ -69,13 +72,51 @@ export default function RadiologyPage() {
     window.open(`${whatsappLink}?text=${encodedMessage}`, '_blank');
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-        toast({ title: "تم اختيار الملف", description: `تم اختيار ملف ${file.name}. سيتم إرساله عبر واتساب.` });
-        const message = `أرغب في الاستفسار عن أشعة من خلال روشتة مرفقة.`;
-        const encodedMessage = encodeURIComponent(message);
-        window.open(`${whatsappLink}?text=${encodedMessage}`, '_blank');
+        try {
+            setIsUploading(true);
+            toast({ title: "جاري رفع الملف", description: "يرجى الانتظار..." });
+            
+            // Upload to Cloudinary
+            const imageUrl = await uploadToCloudinary(file);
+            
+            if (!user) {
+                toast({
+                    variant: "destructive",
+                    title: "خطأ",
+                    description: "يجب تسجيل الدخول أولاً",
+                });
+                return;
+            }
+
+            // Save to Airtable Patients Images
+            await savePatientPrescription(
+                user.uid,
+                user.displayName || 'Unknown',
+                imageUrl
+            );
+
+            toast({ 
+                title: "تم رفع الملف بنجاح", 
+                description: "تم حفظ الروشتة في قاعدة البيانات" 
+            });
+
+            // After successful upload, open WhatsApp
+            const message = `أرغب في الاستفسار عن أشعة. قمت برفع الروشتة إلى النظام.`;
+            const encodedMessage = encodeURIComponent(message);
+            window.open(`${whatsappLink}?text=${encodedMessage}`, '_blank');
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            toast({
+                variant: "destructive",
+                title: "خطأ في رفع الملف",
+                description: "يرجى المحاولة مرة أخرى"
+            });
+        } finally {
+            setIsUploading(false);
+        }
     }
   };
 
@@ -108,10 +149,31 @@ export default function RadiologyPage() {
             <CardContent className="p-6 md:p-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                     <div className="flex flex-col gap-4">
-                         <Button variant="outline" className="h-24 flex-col gap-2 text-lg" onClick={() => fileInputRef.current?.click()}>
-                            <Upload className="h-8 w-8" />
-                            <span>ارفع صورة الروشتة</span>
-                             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,.pdf"/>
+                         <Button 
+                            variant="outline" 
+                            className="h-24 flex-col gap-2 text-lg" 
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploading}
+                        >
+                            {isUploading ? (
+                                <>
+                                    <Loader2 className="h-8 w-8 animate-spin" />
+                                    <span>جاري الرفع...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Upload className="h-8 w-8" />
+                                    <span>ارفع صورة الروشتة</span>
+                                </>
+                            )}
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                onChange={handleFileChange} 
+                                className="hidden" 
+                                accept="image/*,.pdf"
+                                disabled={isUploading}
+                            />
                         </Button>
                          <Textarea placeholder="أو اكتب أسماء الأشعة المطلوبة هنا..." className="min-h-[108px] text-base"/>
                     </div>
