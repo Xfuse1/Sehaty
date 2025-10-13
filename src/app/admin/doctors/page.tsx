@@ -30,7 +30,17 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, useCollection, useMemoFirebase, useFirebase } from '@/firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Doctor = {
   id?: string;
@@ -49,8 +59,39 @@ export default function DoctorsPage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [doctorToDelete, setDoctorToDelete] = useState<Doctor | null>(null);
   const firestore = useFirestore();
   const { user, isUserLoading } = useFirebase();
+
+  const handleDelete = async (doctor: Doctor) => {
+    setDoctorToDelete(doctor);
+  };
+
+  const confirmDelete = async () => {
+    if (!doctorToDelete?.id) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete from Firestore
+      await deleteDoc(doc(firestore, 'doctors', doctorToDelete.id));
+      
+      toast({
+        title: "تم الحذف",
+        description: "تم حذف الطبيب بنجاح",
+      });
+    } catch (error) {
+      console.error('Error deleting doctor:', error);
+      toast({
+        variant: "destructive",
+        title: "خطأ في الحذف",
+        description: "حدث خطأ أثناء حذف الطبيب. حاول مرة أخرى.",
+      });
+    } finally {
+      setIsDeleting(false);
+      setDoctorToDelete(null);
+    }
+  };
 
   const doctorsQuery = useMemoFirebase(() => {
     return collection(firestore, 'doctors');
@@ -238,7 +279,18 @@ export default function DoctorsPage() {
                     <TableCell>{doctor.price}ج.م</TableCell>
                     <TableCell className="flex gap-2">
                         <Button variant="outline" size="icon"><Edit className="h-4 w-4" /></Button>
-                        <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
+                        <Button 
+                          variant="destructive" 
+                          size="icon"
+                          onClick={() => handleDelete(doctor)}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting && doctorToDelete?.id === doctor.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
                     </TableCell>
                     </TableRow>
                     );
@@ -252,6 +304,34 @@ export default function DoctorsPage() {
                 )}
             </TableBody>
             </Table>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={!!doctorToDelete} onOpenChange={() => setDoctorToDelete(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>هل أنت متأكد من حذف هذا الطبيب؟</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    سيتم حذف بيانات الطبيب "{doctorToDelete?.name}" نهائياً. هذا الإجراء لا يمكن التراجع عنه.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={confirmDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                        جارِ الحذف...
+                      </>
+                    ) : (
+                      'تأكيد الحذف'
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
         </CardContent>
       </Card>
 

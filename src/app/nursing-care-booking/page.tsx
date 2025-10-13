@@ -37,6 +37,7 @@ function NursingCareBookingFlow() {
     });
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [fileName, setFileName] = useState<string | null>(null);
+    const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
     const whatsappLink = "https://wa.me/201211886649";
 
@@ -75,6 +76,7 @@ function NursingCareBookingFlow() {
                 
                 // Upload to Cloudinary
                 const imageUrl = await uploadToCloudinary(file);
+                setUploadedImageUrl(imageUrl); // Store the URL in state
                 
                 if (!user) {
                     toast({
@@ -103,6 +105,7 @@ function NursingCareBookingFlow() {
                     title: "خطأ في رفع الملف",
                     description: "يرجى المحاولة مرة أخرى"
                 });
+                setUploadedImageUrl(null);
             }
         }
     };
@@ -121,7 +124,8 @@ function NursingCareBookingFlow() {
         }
 
         const bookingId = `nursingbooking_${Date.now()}`;
-        const bookingDetails = {
+        // Create booking details object with all required fields
+        const bookingDetails: Record<string, any> = {
             id: bookingId,
             packageId: pkg.id,
             packageName: pkg.name,
@@ -137,6 +141,14 @@ function NursingCareBookingFlow() {
             status: 'pending_confirmation',
             createdAt: new Date().toISOString(),
         };
+
+        // Add package image URL if available, otherwise use a placeholder
+        bookingDetails.packageImageUrl = pkg.imageUrl || null;
+
+        // Add prescription URL if available
+        if (uploadedImageUrl) {
+            bookingDetails.prescriptionUrl = uploadedImageUrl;
+        }
 
         const userBookingRef = doc(firestore, "users", user.uid, "bookings", bookingId);
         setDocumentNonBlocking(userBookingRef, bookingDetails, { merge: true });
@@ -154,7 +166,7 @@ function NursingCareBookingFlow() {
 
         *تفاصيل الباقة:*
         - اسم الباقة: ${bookingDetails.packageName}
-        - السعر: ${bookingDetails.packagePrice} ر.س
+        - السعر: ${bookingDetails.packagePrice} ج.م
 
         *بيانات المريض:*
         - الاسم: ${bookingDetails.patientName}
@@ -168,6 +180,7 @@ function NursingCareBookingFlow() {
         *تفاصيل الطلب:*
         - رقم الطلب: ${bookingDetails.id}
         - طريقة الدفع: ${bookingDetails.paymentMethod === 'cash' ? 'عند تقديم الخدمة' : 'أونلاين'}
+        ${bookingDetails.prescriptionUrl ? `\n*الروشتة الطبية:*\n${bookingDetails.prescriptionUrl}` : ''}
         `;
 
         const encodedMessage = encodeURIComponent(message);
@@ -291,7 +304,7 @@ function NursingCareBookingFlow() {
                                 <p className="text-muted-foreground text-xs mb-4">{pkg.description}</p>
                                 <div className="flex justify-between mt-4 pt-4 border-t">
                                     <span className="text-muted-foreground font-bold">سعر الباقة:</span>
-                                    <span className="font-bold text-lg text-primary">{pkg.price} ر.س</span>
+                                    <span className="font-bold text-lg text-primary">{pkg.price}ج.م</span>
                                 </div>
                            </div>
                            <Button 

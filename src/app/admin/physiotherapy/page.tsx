@@ -24,7 +24,17 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { addDoc, collection, serverTimestamp, DocumentData } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, DocumentData, doc, deleteDoc } from 'firebase/firestore';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PhysiotherapyPackage extends DocumentData {
   id?: string;
@@ -49,7 +59,38 @@ export default function PhysiotherapyPage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [packageToDelete, setPackageToDelete] = useState<PhysiotherapyPackage | null>(null);
   const firestore = useFirestore();
+
+  const handleDelete = async (pkg: PhysiotherapyPackage) => {
+    setPackageToDelete(pkg);
+  };
+
+  const confirmDelete = async () => {
+    if (!packageToDelete?.id) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete from Firestore
+      await deleteDoc(doc(firestore, COLLECTION_PATH, packageToDelete.id));
+      
+      toast({
+        title: "تم الحذف",
+        description: "تم حذف الباقة بنجاح",
+      });
+    } catch (error) {
+      console.error('Error deleting package:', error);
+      toast({
+        variant: "destructive",
+        title: "خطأ في الحذف",
+        description: "حدث خطأ أثناء حذف الباقة. حاول مرة أخرى.",
+      });
+    } finally {
+      setIsDeleting(false);
+      setPackageToDelete(null);
+    }
+  };
 
   const physiotherapyQuery = useMemoFirebase(() => {
     return collection(firestore, COLLECTION_PATH);
@@ -193,7 +234,18 @@ const displayPackages = useMemo(() => {
                     <TableCell>{pkg.duration}</TableCell>
                     <TableCell className="flex gap-2">
                         <Button variant="outline" size="icon" onClick={openDialog}><Edit className="h-4 w-4" /></Button>
-                        <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
+                        <Button 
+                          variant="destructive" 
+                          size="icon"
+                          onClick={() => handleDelete(pkg)}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting && packageToDelete?.id === pkg.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
                     </TableCell>
                     </TableRow>
                 ))
@@ -206,6 +258,34 @@ const displayPackages = useMemo(() => {
                 )}
             </TableBody>
             </Table>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={!!packageToDelete} onOpenChange={() => setPackageToDelete(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>هل أنت متأكد من حذف هذه الباقة؟</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    سيتم حذف باقة "{packageToDelete?.PackageName}" نهائياً. هذا الإجراء لا يمكن التراجع عنه.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={confirmDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                        جارِ الحذف...
+                      </>
+                    ) : (
+                      'تأكيد الحذف'
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
         </CardContent>
       </Card>
 

@@ -37,6 +37,7 @@ function PhysiotherapyBookingFlow() {
     });
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [fileName, setFileName] = useState<string | null>(null);
+    const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
     const whatsappLink = "https://wa.me/201211886649";
 
@@ -75,6 +76,7 @@ function PhysiotherapyBookingFlow() {
                 
                 // Upload to Cloudinary
                 const imageUrl = await uploadToCloudinary(file);
+                setUploadedImageUrl(imageUrl); // Store the URL in state
                 
                 if (!user) {
                     toast({
@@ -103,6 +105,7 @@ function PhysiotherapyBookingFlow() {
                     title: "خطأ في رفع الملف",
                     description: "يرجى المحاولة مرة أخرى",
                 });
+                setUploadedImageUrl(null);
             }
         }
     };
@@ -131,11 +134,32 @@ function PhysiotherapyBookingFlow() {
         }
 
         const bookingId = `physiobooking_${Date.now()}`;
-        const bookingDetails = {
+        // Define the type for booking details
+        interface BookingDetails {
+            bookingId: string;
+            packageId: string;
+            packageName: string;
+            packagePrice: number | string;
+            serviceType: string;
+            userId: string;
+            patientName: string;
+            patientPhone: string;
+            patientAddress: string;
+            patientAge: string;
+            caseDescription: string;
+            paymentMethod: string;
+            status: string;
+            createdAt: string;
+            packageImageUrl: string;
+            prescriptionUrl?: string; // Make it optional with ?
+        }
+
+        // Create booking details object with all required fields
+        const bookingDetails: BookingDetails = {
             bookingId: bookingId,
-            packageId: pkg?.id,
-            packageName: pkg?.name || pkg?.PackageName, // Handle both name formats
-            packagePrice: pkg?.price || pkg?.Price, // Handle both price formats
+            packageId: pkg?.id || '',
+            packageName: pkg?.name || pkg?.PackageName || '', // Handle both name formats
+            packagePrice: pkg?.price || pkg?.Price || 0, // Handle both price formats
             serviceType: 'physiotherapy',
             userId: user.uid,
             patientName: patientDetails.name,
@@ -146,7 +170,18 @@ function PhysiotherapyBookingFlow() {
             paymentMethod: paymentMethod,
             status: 'pending_confirmation',
             createdAt: new Date().toISOString(),
+            packageImageUrl: pkg?.imageUrl || '',
         };
+
+        // Add package image URL if available
+        if (pkg?.imageUrl) {
+            bookingDetails.packageImageUrl = pkg.imageUrl;
+        }
+
+        // Add prescription URL if available
+        if (uploadedImageUrl) {
+            bookingDetails.prescriptionUrl = uploadedImageUrl;
+        }
 
         const userBookingRef = doc(firestore, "users", user.uid, "bookings", bookingId);
         setDocumentNonBlocking(userBookingRef, bookingDetails, { merge: true });
@@ -179,6 +214,7 @@ function PhysiotherapyBookingFlow() {
         *تفاصيل الطلب:*
         - رقم الطلب: ${bookingDetails.bookingId}
         - طريقة الدفع: ${bookingDetails.paymentMethod === 'cash' ? 'عند تقديم الخدمة' : 'أونلاين'}
+        ${uploadedImageUrl ? `\n*التقرير الطبي:*\n${uploadedImageUrl}` : ''}
         `;
 
         const encodedMessage = encodeURIComponent(message);
