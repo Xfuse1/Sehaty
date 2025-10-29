@@ -65,7 +65,7 @@ function BookingFlow() {
         }
     }, [searchParams, doctor]);
 
-    const handleConfirmBooking = () => {
+    const handleConfirmBooking = async () => {
         setIsBooking(true);
         
         if (!user) {
@@ -93,6 +93,7 @@ function BookingFlow() {
             appointmentDate: selectedDate?.toISOString(),
             appointmentTime: selectedTime,
             paymentMethod: paymentMethod,
+            fee: doctor?.price || 0,
             status: 'confirmed',
             createdAt: new Date().toISOString(),
         };
@@ -106,19 +107,52 @@ function BookingFlow() {
         setDocumentNonBlocking(doctorBookingRef, bookingDetails, { merge: true });
 
 
-        // Simulate API call
-        setTimeout(() => {
-            const queryParams = new URLSearchParams({
-                patientName: bookingDetails.patientName,
-                patientPhone: bookingDetails.patientPhone,
-                appointmentDate: selectedDate?.toLocaleDateString('ar-EG') || 'N/A',
-                appointmentTime: bookingDetails.appointmentTime || 'N/A',
-                doctorName: bookingDetails.doctorName,
-                bookingId: bookingDetails.id,
-            }).toString();
+        // If online payment selected, create a Kashier session and redirect
+        if (paymentMethod === 'online') {
+            try {
+                const resp = await fetch('/api/kashier/create-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: bookingDetails.fee,
+                        orderId: bookingDetails.id,
+                        description: `حجز ${bookingDetails.doctorName}`,
+                        merchantRedirect: `${window.location.origin}/payment/success`,
+                        failureRedirect: `${window.location.origin}/payment/failure`,
+                        serverWebhook: undefined,
+                        metadata: { serviceType: 'consultation', userId: bookingDetails.userId }
+                    }),
+                });
 
-            router.push(`/booking-confirmation?${queryParams}`); 
-        }, 1000);
+                const data = await resp.json();
+                if (data?.checkoutUrl) {
+                    const redirectingUrl = `/payment/redirecting?checkoutUrl=${encodeURIComponent(data.checkoutUrl)}&orderId=${encodeURIComponent(bookingDetails.id)}`;
+                    window.location.href = redirectingUrl;
+                    return; // stop further execution
+                } else {
+                    console.error('Failed to create payment', data);
+                    toast({ variant: 'destructive', title: 'خطأ في الدفع', description: 'لم نتمكن من إنشاء جلسة الدفع. حاول مرة أخرى.' });
+                }
+            } catch (error) {
+                console.error('Payment creation error', error);
+                toast({ variant: 'destructive', title: 'خطأ في الدفع', description: 'حدث خطأ داخلي أثناء محاولة الدفع.' });
+            }
+        }
+
+        // For cash flow or when payment creation failed, navigate to confirmation page
+        const queryParams = new URLSearchParams({
+            patientName: bookingDetails.patientName,
+            patientPhone: bookingDetails.patientPhone,
+            appointmentDate: selectedDate?.toLocaleDateString('ar-EG') || 'N/A',
+            appointmentTime: bookingDetails.appointmentTime || 'N/A',
+            doctorName: bookingDetails.doctorName,
+            bookingId: bookingDetails.id,
+        }).toString();
+
+        // small delay to give background writes a moment to persist
+        setTimeout(() => {
+            router.push(`/booking-confirmation?${queryParams}`);
+        }, 800);
     }
 
     if (isUserLoading || !user || !doctor) {
