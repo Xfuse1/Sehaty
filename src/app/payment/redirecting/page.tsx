@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
-export default function RedirectingPage() {
+function RedirectingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const checkoutUrl = searchParams.get('checkoutUrl');
@@ -46,5 +46,18 @@ export default function RedirectingPage() {
       <h2 className="mt-6 text-2xl font-bold">جاري تحويلك لصفحة الدفع...</h2>
       <p className="mt-2 text-muted-foreground">إذا لم يتم تحويلك تلقائيًا، اضغط <a href={checkoutUrl} className="text-primary underline">هنا</a>.</p>
     </div>
+  );
+}
+
+export default function RedirectingPage() {
+  return (
+    <Suspense fallback={
+      <div className="container py-24 text-center">
+        <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+        <h2 className="mt-6 text-2xl font-bold">جاري التحميل...</h2>
+      </div>
+    }>
+      <RedirectingContent />
+    </Suspense>
   );
 }
