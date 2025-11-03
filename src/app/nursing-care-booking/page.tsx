@@ -110,9 +110,9 @@ function NursingCareBookingFlow() {
         }
     };
     
-    const handleConfirmBooking = () => {
+    const handleConfirmBooking = async () => {
         setIsBooking(true);
-        
+
         if (!user) {
              toast({
                 variant: "destructive",
@@ -186,8 +186,42 @@ function NursingCareBookingFlow() {
         const encodedMessage = encodeURIComponent(message);
         const finalWhatsappUrl = `${whatsappLink}?text=${encodedMessage}`;
 
+        // If online payment selected, call create-payment endpoint and redirect to Kashier
+        if (paymentMethod === 'online') {
+            try {
+                const resp = await fetch('/api/kashier/create-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: bookingDetails.packagePrice,
+                        orderId: bookingDetails.id,
+                        description: `حجز ${bookingDetails.packageName}`,
+                        merchantRedirect: `${window.location.origin}/payment/success`,
+                        failureRedirect: `${window.location.origin}/payment/failure`,
+                        serverWebhook: undefined,
+                        metadata: { serviceType: bookingDetails.serviceType, userId: bookingDetails.userId }
+                    }),
+                });
+
+                const data = await resp.json();
+                if (data?.checkoutUrl) {
+                    const redirectingUrl = `/payment/redirecting?checkoutUrl=${encodeURIComponent(data.checkoutUrl)}&orderId=${encodeURIComponent(bookingDetails.id)}`;
+                    window.location.href = redirectingUrl;
+                    return; // stop further execution
+                } else {
+                    console.error('Failed to create payment', data);
+                    toast({ variant: 'destructive', title: 'خطأ في الدفع', description: 'لم نتمكن من إنشاء جلسة الدفع. حاول مرة أخرى.' });
+                }
+            } catch (error) {
+                console.error('Payment creation error', error);
+                toast({ variant: 'destructive', title: 'خطأ في الدفع', description: 'حدث خطأ داخلي أثناء محاولة الدفع.' });
+            }
+        }
+
+        // Redirect to WhatsApp for cash/backup flow
         window.location.href = finalWhatsappUrl;
 
+        // Fallback to stop loading state if redirection fails
         setTimeout(() => {
             setIsBooking(false);
         }, 5000);

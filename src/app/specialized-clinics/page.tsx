@@ -16,106 +16,27 @@ import {
 } from "@/components/ui/select"
 import { Badge } from '@/components/ui/badge';
 import { initialSpecializedClinics } from '@/lib/site-content-data';
-import { useUser } from '@/firebase'; // Assuming useUser gives us login status
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase'; // Assuming useUser gives us login status
+import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 
-// Mock data for doctors, will be replaced with Firebase data
-const doctorsList = [
-    {
-        id: '1',
-        name: 'د. فاطمة علي الأحمد',
-        specialty: 'طب الأطفال وحديثي الولادة',
-        rating: 4.8,
-        reviews: 192,
-        experience: 15,
-        certifications: ['استشارية أطفال', 'زمالة أمريكية'],
-        location: 'عيادة الأمل - جدة',
-        nextAvailable: 'اليوم 03:00 م',
-        price: 250,
-        image: 'https://picsum.photos/seed/doctor1/200/200',
-        available: true,
-    },
-    {
-        id: '2',
-        name: 'د. أحمد محمد السعيد',
-        specialty: 'طب القلب والأوعية الدموية',
-        rating: 4.9,
-        reviews: 234,
-        experience: 20,
-        certifications: ['استشاري قلب', 'زمالة بريطانية'],
-        location: 'مستشفى النور - الرياض',
-        nextAvailable: 'غداً 10:00 ص',
-        price: 300,
-        image: 'https://picsum.photos/seed/doctor2/200/200',
-        available: true,
-    },
-    {
-        id: '3',
-        name: 'د. سارة خالد المطيري',
-        specialty: 'الأمراض الجلدية والتجميل',
-        rating: 4.9,
-        reviews: 298,
-        experience: 12,
-        certifications: ['استشارية جلدية', 'ماجستير تجميل'],
-        location: 'عيادة الجمال الطبي - الرياض',
-        nextAvailable: 'اليوم 05:00 م',
-        price: 280,
-        image: 'https://picsum.photos/seed/doctor3/200/200',
-        available: true,
-    },
-    {
-        id: '4',
-        name: 'د. محمود حسن العمري',
-        specialty: 'جراحة العظام والمفاصل',
-        rating: 4.7,
-        reviews: 155,
-        experience: 18,
-        certifications: ['استشاري عظام', 'زمالة ألمانية'],
-        location: 'مركز العظام المتقدم - الدمام',
-        nextAvailable: 'بعد غد 11:00 ص',
-        price: 350,
-        image: 'https://picsum.photos/seed/doctor4/200/200',
-        available: true,
-    },
-    {
-        id: '5',
-        name: 'د. نورة سعد الدوسري',
-        specialty: 'النساء والولادة',
-        rating: 4.9,
-        reviews: 312,
-        experience: 14,
-        certifications: ['استشارية نساء وولادة'],
-        location: 'مستشفى الحياة - الرياض',
-        nextAvailable: 'اليوم 04:30 م',
-        price: 290,
-        image: 'https://picsum.photos/seed/doctor5/200/200',
-        available: true,
-    },
-    {
-        id: '6',
-        name: 'د. عبدالله يوسف القحطاني',
-        specialty: 'طب العيون وجراحة الليزك',
-        rating: 4.8,
-        reviews: 187,
-        experience: 16,
-        certifications: ['استشاري عيون', 'زمالة بريطانية'],
-        location: 'مركز الرؤية - جدة',
-        nextAvailable: 'غداً 02:00 م',
-        price: 320,
-        image: 'https://picsum.photos/seed/doctor6/200/200',
-        available: true,
-    },
-];
+// Doctors will be loaded from Firestore 'doctors' collection
 
 
 export default function SpecializedClinicsPage() {
     const { user } = useUser();
     const router = useRouter();
     const { toast } = useToast();
-    // In a real app, this would be fetched from Firebase
-    const [doctors, setDoctors] = useState(doctorsList);
-    const [isLoading, setIsLoading] = useState(false);
+    const firestore = useFirestore();
+
+    // Firestore collection query
+    const doctorsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'doctors');
+    }, [firestore]);
+
+    const { data: doctors, isLoading: doctorsLoading, error: doctorsError } = useCollection<any>(doctorsQuery);
     const [selectedSpecialty, setSelectedSpecialty] = useState('all');
 
     const handleBooking = (doctor: any) => {
@@ -132,6 +53,23 @@ export default function SpecializedClinicsPage() {
         }
     };
 
+    // Filter doctors by selected specialty when applicable
+    const filteredDoctors = (doctors || []).filter((d: any) => {
+        if (selectedSpecialty === 'all') return true;
+        // Try multiple matches: doctor's specialtyId, doctor's specialty name (localized), or name includes clinic name
+        const clinic = initialSpecializedClinics.find(c => c.id === selectedSpecialty);
+        const clinicName = clinic?.name || '';
+        const docSpecialtyId = (d.specialtyId || '').toString();
+        const docSpecialtyName = (d.specialty || '').toString();
+
+        const selected = String(selectedSpecialty).toLowerCase();
+        return (
+            docSpecialtyId.toLowerCase() === selected
+            || docSpecialtyName.toLowerCase().includes(selected)
+            || (clinicName && docSpecialtyName.toLowerCase().includes(clinicName.toLowerCase()))
+        );
+    });
+
     return (
         <div className="bg-muted/30">
             <header className="container mx-auto py-12 text-center">
@@ -140,12 +78,12 @@ export default function SpecializedClinicsPage() {
                     {initialSpecializedClinics.map(clinic => (
                         <Card 
                             key={clinic.id} 
-                            className="text-center p-4 rounded-xl cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-card"
+                            className={`text-center p-4 rounded-xl cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-card ${selectedSpecialty === clinic.id ? 'ring-2 ring-primary/40' : ''}`}
                             onClick={() => setSelectedSpecialty(clinic.id)}
                         >
                             <div className="flex justify-center items-center h-12" dangerouslySetInnerHTML={{ __html: clinic.icon }} />
                             <p className="font-semibold mt-2 text-sm">{clinic.name}</p>
-                            <p className="text-xs text-muted-foreground">{clinic.count} طبيب</p>
+                           
                         </Card>
                     ))}
                 </div>
@@ -155,13 +93,14 @@ export default function SpecializedClinicsPage() {
                  <div className="bg-card p-4 rounded-t-xl border-b">
                     <div className="flex justify-between items-center">
                          <h2 className="text-xl font-bold text-primary">الأطباء المتاحون</h2>
-                         <div className="flex items-center gap-4">
-                            <p className="text-sm text-muted-foreground">تم العثور على {doctors.length} طبيب</p>
-                             <Select defaultValue="highest-rated">
+                                 <div className="flex items-center gap-4">
+                                    <p className="text-sm text-muted-foreground">تم العثور على {(filteredDoctors?.length ?? 0)} طبيب</p>
+                             <Select value={selectedSpecialty} onValueChange={(v) => setSelectedSpecialty(v)}>
                                 <SelectTrigger className="w-[180px]">
                                     <SelectValue placeholder="ترتيب حسب" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="all">الكل</SelectItem>
                                     <SelectItem value="highest-rated">الأعلى تقييماً</SelectItem>
                                     <SelectItem value="lowest-price">الأقل سعراً</SelectItem>
                                     <SelectItem value="highest-price">الأعلى سعراً</SelectItem>
@@ -170,13 +109,13 @@ export default function SpecializedClinicsPage() {
                          </div>
                     </div>
                  </div>
-                {isLoading ? (
+                {doctorsLoading ? (
                     <div className="flex justify-center items-center h-64">
                         <Loader2 className="h-12 w-12 animate-spin text-primary" />
                     </div>
-                ) : doctors && doctors.length > 0 ? (
+                ) : (filteredDoctors && filteredDoctors.length > 0) ? (
                     <div className="space-y-4 bg-card p-4 rounded-b-xl">
-                        {doctors.map(doctor => (
+                        {filteredDoctors.map((doctor: any) => (
                             <Card key={doctor.id} className="grid grid-cols-12 gap-4 p-4 items-center">
                                 {/* Doctor Info */}
                                 <div className="col-span-12 md:col-span-5 flex items-start gap-4">
@@ -202,16 +141,16 @@ export default function SpecializedClinicsPage() {
                                 </div>
                                 {/* Certifications */}
                                 <div className="col-span-12 md:col-span-3 space-y-2 text-sm">
-                                    {doctor.certifications.map((cert, index) => (
+                                    {(doctor.certifications || []).map((cert: string, index: number) => (
                                         <div key={index} className="flex items-center gap-2">
                                             <GraduationCap className="w-4 h-4 text-primary/70" />
                                             <span>{cert}</span>
                                         </div>
                                     ))}
-                                    <div className="flex items-center gap-2">
-                                       <MapPin className="w-4 h-4 text-primary/70" />
-                                       <span>{doctor.location}</span>
-                                    </div>
+                                                <div className="flex items-center gap-2">
+                                                    <MapPin className="w-4 h-4 text-primary/70" />
+                                                    <span>{doctor.location}{doctor.address ? ` — ${doctor.address}` : ''}</span>
+                                                </div>
                                     <div className="flex items-center gap-2">
                                        <CalendarClock className="w-4 h-4 text-primary/70" />
                                        <span>أقرب موعد: {doctor.nextAvailable}</span>

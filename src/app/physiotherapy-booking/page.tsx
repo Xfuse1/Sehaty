@@ -1,5 +1,4 @@
-
-"use client"
+"use client";
 
 import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -110,7 +109,7 @@ function PhysiotherapyBookingFlow() {
         }
     };
     
-    const handleConfirmBooking = () => {
+    const handleConfirmBooking = async () => {
         setIsBooking(true);
         
         if (!user) {
@@ -220,7 +219,40 @@ function PhysiotherapyBookingFlow() {
         const encodedMessage = encodeURIComponent(message);
         const finalWhatsappUrl = `${whatsappLink}?text=${encodedMessage}`;
 
-        // Redirect to WhatsApp
+        // If online payment selected, call create-payment endpoint and redirect to Kashier
+        if (paymentMethod === 'online') {
+            try {
+                const resp = await fetch('/api/kashier/create-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: bookingDetails.packagePrice,
+                        orderId: bookingDetails.bookingId,
+                        description: `حجز ${bookingDetails.packageName}`,
+                        merchantRedirect: `${window.location.origin}/payment/success`,
+                        failureRedirect: `${window.location.origin}/payment/failure`,
+                        serverWebhook: undefined, // optional: let server env decide
+                        metadata: { serviceType: bookingDetails.serviceType, userId: bookingDetails.userId }
+                    }),
+                });
+
+                const data = await resp.json();
+                if (data?.checkoutUrl) {
+                    // Open a local redirecting page which will set pending state and then forward to Kashier
+                    const redirectingUrl = `/payment/redirecting?checkoutUrl=${encodeURIComponent(data.checkoutUrl)}&orderId=${encodeURIComponent(bookingDetails.bookingId)}`;
+                    window.location.href = redirectingUrl;
+                    return; // stop further execution
+                } else {
+                    console.error('Failed to create payment', data);
+                    toast({ variant: 'destructive', title: 'خطأ في الدفع', description: 'لم نتمكن من إنشاء جلسة الدفع. حاول مرة أخرى.' });
+                }
+            } catch (error) {
+                console.error('Payment creation error', error);
+                toast({ variant: 'destructive', title: 'خطأ في الدفع', description: 'حدث خطأ داخلي أثناء محاولة الدفع.' });
+            }
+        }
+
+        // Redirect to WhatsApp for cash/backup flow
         window.location.href = finalWhatsappUrl;
 
         // Fallback to stop loading state if redirection fails

@@ -17,12 +17,20 @@ interface Booking {
   serviceType: string;
   doctorName: string;
   status: string;
+  // optional fields for package bookings (physiotherapy)
+  packageName?: string;
+  packagePrice?: number | string;
+  packageImageUrl?: string;
+  // package kind and payment method
+  packageKind?: string;
+  paymentMethod?: string;
 }
 
 export default function MyBookingsPage() {
   const { user, isUserLoading } = useUser()
   const router = useRouter()
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [packageBookings, setPackageBookings] = useState<Booking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [indexBuildError, setIndexBuildError] = useState(false);
 
@@ -53,6 +61,40 @@ export default function MyBookingsPage() {
 
         setBookings(fetchedBookings);
         setIndexBuildError(false);
+
+        try {
+          // Fetch physio and nursing top-level bookings for this user
+          const physioRef = collection(db, 'physiotherapy_bookings');
+          const physioQ = query(physioRef, where('userId', '==', user.uid));
+          const physioSnap = await getDocs(physioQ);
+          const physioBookings = physioSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Booking[];
+
+          const nursingRef = collection(db, 'nursing_care_bookings');
+          const nursingQ = query(nursingRef, where('userId', '==', user.uid));
+          const nursingSnap = await getDocs(nursingQ);
+          const nursingBookings = nursingSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Booking[];
+
+          // merge and dedupe by id, preferring user subcollection data
+          const byId = new Map<string, Booking>();
+          // add top-level bookings first
+          physioBookings.forEach(p => byId.set(p.id, p));
+          nursingBookings.forEach(n => byId.set(n.id, n));
+          // overlay user subcollection bookings (prefer these)
+          fetchedBookings.forEach(b => byId.set(b.id, b));
+
+          const merged = Array.from(byId.values())
+            .filter(b => b.packageName || (typeof b.serviceType === 'string' && (b.serviceType.toLowerCase() === 'physiotherapy' || b.serviceType.toLowerCase() === 'nursing_care')))
+            .map(b => ({
+              ...b,
+              packageKind: b.packageName ? (b.serviceType || 'package') : (b.serviceType || undefined),
+              paymentMethod: (b as any).paymentMethod || (b as any).payment || undefined,
+            } as Booking));
+          setPackageBookings(merged);
+        } catch (err) {
+          console.error('Error fetching physio/nursing bookings:', err);
+        }
+
+        // (physio fetch handled above)
       } catch (error: any) {
         console.error('Error fetching bookings:', error);
         if (error?.message?.includes('index is currently building')) {
@@ -85,6 +127,8 @@ export default function MyBookingsPage() {
   const pastBookings = bookings.filter(booking => 
     new Date(booking.appointmentDate) < currentDate
   );
+
+  // (removed unused bookedPackages variable)
 
   return (
     <div className="container py-12">
@@ -167,6 +211,45 @@ export default function MyBookingsPage() {
                  <p className="text-sm">لا توجد لديك حجوزات سابقة.</p>
              </div>
            )}
+        </section>
+
+         <section>
+          <h2 className="text-2xl font-bold mb-4">الباقات المحجوزه</h2>
+          {bookingsLoading ? (
+            <div className="text-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></div>
+          ) : packageBookings.length > 0 ? (
+            <div className="space-y-6">
+              {packageBookings.map(pkg => (
+                <Card key={pkg.id}>
+                  <CardHeader>
+                    <CardTitle>{pkg.packageName || pkg.serviceType}</CardTitle>
+                    <CardDescription>تاريخ الحجز: {pkg.appointmentDate ? new Date(pkg.appointmentDate).toLocaleDateString('ar-SA') : '-'}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4">
+                      {pkg.packageImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={pkg.packageImageUrl as string} alt={pkg.packageName} className="w-24 h-24 object-cover rounded" />
+                      ) : (
+                        <div className="w-24 h-24 bg-muted rounded flex items-center justify-center">صورة</div>
+                      )}
+                      <div>
+                        <p className="font-semibold">{pkg.packageName}</p>
+                        <p className="text-sm text-muted-foreground">السعر: {pkg.packagePrice ?? '-'} ر.س</p>
+                        <p className="text-sm">النوع: {pkg.packageKind ?? pkg.serviceType}</p>
+                        <p className="text-sm">طريقة الدفع: {pkg.paymentMethod ?? '-'}</p>
+                        <p className="text-sm">الحالة: {pkg.status}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-lg">
+              <p className="font-semibold">لا توجد لديك باقات محجوزة.</p>
+            </div>
+          )}
         </section>
       </div>
     </div>
