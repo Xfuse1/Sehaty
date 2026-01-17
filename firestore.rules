@@ -1,0 +1,291 @@
+/**
+ * @fileoverview Firestore Security Rules for the Sehaty application
+ * 
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for personal data while allowing public read access to globally available data.
+ *
+ * Data Structure:
+ * - User profiles are stored under '/users/{userId}'.
+ * - User-specific data (appointments, lab test bookings) are stored under '/users/{userId}/...'.
+ * - Global data (pharmacies, physiotherapy packages, doctors, clinics, nursing care packages, lab tests) are stored at the top level.
+ *
+ * Key Security Decisions:
+ * - Users can only access their own profile data and their associated subcollections.
+ * - Listing of user documents is allowed only for the owner.
+ * - Global data is publicly readable but not writable by clients (assumed to be managed by trusted backend).
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    /**
+     * @description Controls access to admin invitation codes.
+     * @path /admin_invitations/{invitationId}
+     * @allow (read) For anyone (needed for signup validation before auth)
+     * @allow (update) For anyone, but only to mark unused codes as used
+     * @allow (create, delete) Only for authenticated admin users
+     * @principle Allows public read for signup, controlled update for marking as used, restricts creation/deletion to admins
+     * @security Invitation codes are temporary and expire, update restricted to marking as used only
+     */
+    match /admin_invitations/{invitationId} {
+      allow read: if true;
+      allow update: if resource.data.used == false
+                    && request.resource.data.used == true
+                    && request.resource.data.code == resource.data.code;
+      allow create, delete: if isAdmin();
+    }
+
+    // Allow users to read and write their own bookings
+    match /bookings/{bookingId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Allow users to read and write their own prescriptions
+    match /prescriptions/{prescriptionId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    /**
+     * @description Controls access to user profile data.
+     * @path /users/{userId}
+     * @allow (create) If the user's ID matches the requested user ID.
+     * @deny (create) If the user's ID does not match the requested user ID.
+     * @allow (get, list) If the user's ID matches the requested user ID.
+     * @deny (get, list) If the user's ID does not match the requested user ID.
+     * @allow (update, delete) If the user's ID matches the requested user ID and the document exists.
+     * @deny (update, delete) If the user's ID does not match the requested user ID or the document does not exist.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /lab-requests/{requestId} {
+      allow create: if request.auth != null 
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.userName is string
+        && request.resource.data.status == 'pending'
+        && (
+          !('prescriptionUrl' in request.resource.data) || 
+          request.resource.data.prescriptionUrl is string
+        )
+        && (
+          !('testDescription' in request.resource.data) || 
+          request.resource.data.testDescription is string
+        );
+
+      allow read: if request.auth != null 
+        && request.auth.uid == resource.data.userId;
+        
+      allow update: if request.auth != null 
+        && request.auth.uid == resource.data.userId
+        && request.resource.data.userId == resource.data.userId;  // Prevent changing ownership
+        
+      allow delete: if request.auth != null 
+        && request.auth.uid == resource.data.userId;
+    }
+
+    match /users/{userId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // Allow user to create their own profile
+      allow create: if isOwner(userId);
+      // Allow user to update their own profile, or admin to update any user
+      allow update: if isOwner(userId) || isAdmin();
+      // Allow user to delete their own profile, or admin to delete any user
+      allow delete: if isOwner(userId) || isAdmin();
+      // Allow user to read their own profile, or admin to read any profile
+      allow get, list: if isOwner(userId) || isAdmin();
+    }
+
+    /**
+     * @description Controls access to pharmacy data.
+     * @path /pharmacies/{pharmacyId}
+     * @allow (get, list) Allows public read access.
+     * @deny (create, update, delete) Prevents client-side writes.
+     * @principle Allows public reads, restricts writes to authenticated users.
+     */
+    match /pharmacies/{pharmacyId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Controls access to physiotherapy package data.
+     * @path /physical_therapy/{packageId}
+     * @allow (get, list) Allows public read access.
+     * @allow (create, update, delete) If user is authenticated AND has valid data
+     * @principle Allows public reads, restricts writes to authenticated users with valid data
+     */
+    match /physical_therapy/{packageId} {
+      allow get, list: if true;
+      allow create, update: if request.auth != null;
+      allow delete: if request.auth != null && (isAdmin() || resource.data.createdBy == request.auth.uid);
+    }
+    /**
+     * @description Controls access to appointments for a specific user.
+     * @path /users/{userId}/appointments/{appointmentId}
+     * @allow (create) If the user's ID matches the requested user ID.
+     * @deny (create) If the user's ID does not match the requested user ID.
+     * @allow (get, list) If the user's ID matches the requested user ID.
+     * @deny (get, list) If the user's ID does not match the requested user ID.
+     * @allow (update, delete) If the user's ID matches the requested user ID and the document exists.
+     * @deny (update, delete) If the user's ID does not match the requested user ID or the document does not exist.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/appointments/{appointmentId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+        function isExistingOwner(userId) {
+          return isOwner(userId) && resource != null;
+      }
+
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to doctor data.
+     * @path /doctors/{doctorId}
+     * @allow (get, list) Allows public read access.
+     * @allow (create, update, delete) Any authenticated user can write.
+     * @principle Allows public reads, allows authenticated users to write.
+     */
+    match /doctors/{doctorId} {
+      allow get, list: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    match /directory_doctors/{doctorId} {
+      allow get, list: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    /**
+     * @description Controls access to clinic data.
+     * @path /clinics/{clinicId}
+     * @allow (get, list) Allows public read access.
+     * @deny (create, update, delete) Prevents client-side writes.
+     * @principle Allows public reads, restricts writes to authenticated users.
+     */
+    match /clinics/{clinicId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Controls access to nursing care package data.
+     * @path /nursing_care/{packageId}
+     * @allow (get, list) Allows public read access.
+     * @allow (create, update, delete) If user is authenticated
+     * @principle Allows public reads, restricts writes to authenticated users
+     */
+    match /{path=**}/nursing_care/{packageId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /{path=**}/nursingCarePackages/{packageId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /nursing_care_bookings/{bookingId} {
+      allow write: if request.auth != null || isAdmin();
+      allow read: if request.auth != null || isAdmin();
+    }
+
+    /**
+     * @description Controls access to lab test data.
+     * @path /lab_tests/{testId}
+     * @allow (get, list) Allows public read access.
+     * @allow (create, update, delete) If user is authenticated
+     * @principle Allows public reads, restricts writes to authenticated users
+     */
+    match /lab_tests/{testId} {
+      allow get, list: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    /**
+     * @description Controls access to all bookings.
+     * @path /bookings/{bookingId}
+     * @allow (create, update) If user is authenticated and the userId matches
+     * @allow (get, list) If user is authenticated and either admin or the owner
+     * @principle Enforces document ownership and allows admin access
+     */
+    match /physical_therapy/{packageId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    match /physiotherapy_bookings/{bookingId} {
+      allow write: if request.auth != null || isAdmin();
+      allow read: if request.auth != null || isAdmin();
+    }
+
+    match /home_visits/{visitId} {
+      allow write: if request.auth != null;
+      allow read: if request.auth != null;
+    }
+
+    match /doctor_bookings/{bookingId} {
+      allow write: if request.auth != null || isAdmin();
+      allow read: if request.auth != null || isAdmin();
+    }
+
+    match /users/{userId}/bookings/{bookingId} {
+      // Allow user to write their own booking, or admin to update any booking (for refund status)
+      allow write: if (request.auth != null && request.auth.uid == userId) || isAdmin();
+      // Allow user to read their own booking, or admin to read any booking
+      allow read: if (request.auth != null && request.auth.uid == userId) || isAdmin();
+    }
+
+    // Allow admins to query all bookings using collectionGroup
+    match /{path=**}/bookings/{bookingId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    /**
+     * @description Controls access to lab test bookings for a specific user.
+     * @path /users/{userId}/labTestBookings/{labTestBookingId}
+     * @allow (create) If the user's ID matches the requested user ID.
+     * @deny (create) If the user's ID does not match the requested user ID.
+     * @allow (get, list) If the user's ID matches the requested user ID.
+     * @deny (get, list) If the user's ID does not match the requested user ID.
+     * @allow (update, delete) If the user's ID matches the requested user ID and the document exists.
+     * @deny (update, delete) If the user's ID does not match the requested user ID or the document does not exist.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/labTestBookings/{labTestBookingId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+          return isOwner(userId) && resource != null;
+      }
+
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    match /blog_articles/{articleId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

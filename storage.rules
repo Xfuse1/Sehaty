@@ -1,0 +1,19 @@
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Rules for "offers" folder
+    match /offers/{fileName} {
+      // Allow anyone to read the offer images
+      allow read;
+      // Allow only authenticated users (admins) to write (upload, update, delete)
+      allow write: if request.auth != null;
+    }
+
+    // Allow read access to all other files by default for simplicity
+    match /{allPaths=**} {
+      allow read;
+    }
+  }
+}

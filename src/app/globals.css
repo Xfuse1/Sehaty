@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base Colors - Light Mode */
+    --background: 0 0% 100%;
+    /* #FFFFFF */
+    --foreground: 217 33% 17%;
+    /* #1E293B */
+
+    --card: 0 0% 100%;
+    /* #FFFFFF */
+    --card-foreground: 217 33% 17%;
+    /* #1E293B */
+
+    --popover: 0 0% 100%;
+    /* #FFFFFF */
+    --popover-foreground: 217 33% 17%;
+    /* #1E293B */
+
+    --primary: 221 83% 53%;
+    /* #2563EB - Trustworthy Blue */
+    --primary-foreground: 210 40% 98%;
+    /* Light text on blue */
+
+    --secondary: 161 84% 39%;
+    /* #10B981 - Medical Green */
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 210 40% 98%;
+    /* #F8FAFC - Secondary Background */
+    --muted-foreground: 215 16% 47%;
+    /* #64748B - Secondary Text */
+
+    --accent: 38 92% 50%;
+    /* #F59E0B - Amber Accent */
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    /* #E2E8F0 */
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+
+    --radius: 0.75rem;
+
+    /* Status Colors */
+    --success: 161 84% 39%;
+    --success-bg: 161 84% 95%;
+    --warning: 38 92% 50%;
+    --warning-bg: 38 92% 95%;
+    --info: 221 83% 53%;
+    --info-bg: 221 83% 95%;
+  }
+
+  .dark {
+    /* Base Colors - Dark Mode */
+    --background: 222 47% 11%;
+    /* #0F172A - Deep Medical Blue */
+    --foreground: 210 40% 98%;
+    /* #F8FAFC - Almost white */
+
+    --card: 217 33% 17%;
+    /* #1E293B - Secondary Background */
+    --card-foreground: 210 40% 98%;
+
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 213 94% 75%;
+    /* Brighter Blue for Dark Mode */
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 161 84% 50%;
+    /* Brighter Green */
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 217 33% 20%;
+    /* Slightly lighter than card */
+    --muted-foreground: 215 25% 75%;
+    /* Brighter text for better contrast */
+
+    --accent: 41 96% 65%;
+    /* Brighter Gold */
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 25% 27%;
+    --input: 217 25% 35%;
+    --ring: 213 94% 75%;
+  }
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground overflow-x-hidden;
+    font-size: 1rem;
+    line-height: 1.5;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1 {
+    @apply text-3xl md:text-5xl lg:text-6xl font-bold;
+  }
+
+  h2 {
+    @apply text-2xl md:text-4xl font-semibold;
+  }
+
+  h3 {
+    @apply text-xl md:text-2xl font-medium;
+  }
+}
