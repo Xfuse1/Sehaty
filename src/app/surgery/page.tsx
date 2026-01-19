@@ -1,41 +1,66 @@
 
 "use client";
 
+import { useMemo } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { User, GraduationCap, Hospital, BadgeDollarSign, Bot } from "lucide-react";
+import { User, GraduationCap, Hospital, BadgeDollarSign, Bot, Loader2, Scissors } from "lucide-react";
 import Image from "next/image";
 import { useLanguage } from '@/contexts/language-context';
+import { useFirestore, useMemoFirebase, useCollection } from "@/firebase";
+import { collection } from "firebase/firestore";
 
 export default function SurgeryPage() {
     const { language, t } = useLanguage();
     const dir = language === 'ar' ? 'rtl' : 'ltr';
     const surgeryT = t.servicePages.surgery;
+    const firestore = useFirestore();
 
-    const surgeries = surgeryT.items.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        doctors: item.doctors.map((doc: { name: string; qual: string; loc: string; price: string }, index: number) => ({
-            name: doc.name,
-            qualifications: doc.qual,
-            location: doc.loc,
-            price: `${doc.price} ${t.clinics.currency}`,
-            image: `https://picsum.photos/seed/doctor_surg_${item.id}_${index}/200/200`,
-        }))
-    }));
+    const surgeryQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'surgeries');
+    }, [firestore]);
+
+    const { data: rawSurgeries, isLoading } = useCollection<any>(surgeryQuery);
+
+    // Group surgeries by Category
+    const groupedSurgeries = useMemo(() => {
+        if (!rawSurgeries) return [];
+
+        const groups: Record<string, any[]> = {};
+        rawSurgeries.forEach(surg => {
+            const cat = surg.Category || (language === 'ar' ? 'عام' : 'General');
+            if (!groups[cat]) {
+                groups[cat] = [];
+            }
+            groups[cat].push({
+                id: surg.id,
+                name: surg.SurgeryName,
+                description: surg.Description,
+                price: surg.discountPrice || surg.Price,
+                originalPrice: surg.Price,
+                isPopular: surg.isPopular
+            });
+        });
+
+        return Object.entries(groups).map(([name, items]) => ({
+            id: name.toLowerCase().replace(/\s+/g, '-'),
+            name: name,
+            items: items
+        }));
+    }, [rawSurgeries, language]);
 
     const whatsappLink = "https://wa.me/201000476674";
 
-    const handleBooking = (surgeryName: string, doctorName: string, location: string) => {
+    const handleBooking = (surgeryName: string, price: any) => {
+        const priceStr = price ? String(price) : '';
         const message = `
 ${surgeryT.whatsapp.title}
 
 ${surgeryT.whatsapp.surgery} ${surgeryName}
-${surgeryT.whatsapp.doctor} ${doctorName}
-${surgeryT.whatsapp.place} ${location}
+${priceStr ? `*السعر المقدر:* ${priceStr} ${t.clinics.currency}` : ''}
 
 ${surgeryT.whatsapp.prompt}
         `;
@@ -62,52 +87,72 @@ ${surgeryT.whatsapp.prompt}
 
             <main className="container mx-auto px-4 py-16 md:py-24">
                 <div className="max-w-4xl mx-auto">
-                    <Accordion type="single" collapsible className="w-full space-y-6">
-                        {surgeries.map((surgery) => (
-                            <AccordionItem value={surgery.id} key={surgery.id} className="border bg-card rounded-2xl shadow-sm">
-                                <AccordionTrigger className={`p-6 text-xl font-bold text-primary hover:no-underline ${language === 'ar' ? 'text-right' : 'text-left'}`}>
-                                    {surgery.name}
-                                </AccordionTrigger>
-                                <AccordionContent className="p-6 pt-0">
-                                    <p className="text-muted-foreground mb-8">{surgery.description}</p>
-                                    <div className="space-y-6">
-                                        {surgery.doctors.map((doctor: any, index: number) => (
-                                            <Card key={index} className="flex flex-col md:flex-row items-start gap-6 p-4 rounded-xl border-border">
-                                                <div className="flex-shrink-0 flex flex-col items-center w-full md:w-40">
-                                                    <Image src={doctor.image} alt={doctor.name} width={100} height={100} className="rounded-full border-4 border-primary/10" data-ai-hint="doctor portrait" />
-                                                </div>
-                                                <div className="flex-grow w-full">
-                                                    <CardHeader className="p-0">
-                                                        <CardTitle className="text-lg flex items-center gap-2"><User className="text-primary h-5 w-5" />{doctor.name}</CardTitle>
-                                                    </CardHeader>
-                                                    <CardContent className="p-0 mt-4 space-y-3 text-sm">
-                                                        <div className="flex items-start gap-2">
-                                                            <GraduationCap className="h-4 w-4 text-muted-foreground mt-1" />
-                                                            <p><span className="font-semibold">{surgeryT.qualifications}:</span> {doctor.qualifications}</p>
+                    {isLoading ? (
+                        <div className="flex justify-center items-center py-20">
+                            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                        </div>
+                    ) : groupedSurgeries.length > 0 ? (
+                        <Accordion type="single" collapsible className="w-full space-y-6 text-start">
+                            {groupedSurgeries.map((group) => (
+                                <AccordionItem value={group.id} key={group.id} className="border bg-card rounded-2xl shadow-sm overflow-hidden">
+                                    <AccordionTrigger className={`p-6 text-xl font-bold text-primary hover:no-underline hover:bg-primary/5 transition-colors ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+                                        {group.name}
+                                    </AccordionTrigger>
+                                    <AccordionContent className="p-6 pt-4 border-t">
+                                        <div className="space-y-6">
+                                            {group.items.map((item: any, index: number) => (
+                                                <Card key={item.id || index} className={`group hover:shadow-md transition-shadow relative overflow-hidden ${item.isPopular ? 'border-primary/50 bg-primary/5' : ''}`}>
+                                                    {item.isPopular && (
+                                                        <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-bl-lg">
+                                                            {language === 'ar' ? 'الأكثر طلباً' : 'POPULAR'}
                                                         </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <Hospital className="h-4 w-4 text-muted-foreground" />
-                                                            <p><span className="font-semibold">{surgeryT.location}:</span> {doctor.location}</p>
+                                                    )}
+                                                    <div className="p-6">
+                                                        <div className="flex flex-col md:flex-row justify-between gap-6">
+                                                            <div className="space-y-4 flex-1">
+                                                                <div>
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                        <Scissors className="h-4 w-4 text-primary" />
+                                                                        <h3 className="text-xl font-bold text-primary">{item.name}</h3>
+                                                                    </div>
+                                                                    <p className="text-muted-foreground leading-relaxed">{item.description}</p>
+                                                                </div>
+
+                                                                <div className="flex flex-wrap gap-4 text-sm font-medium">
+                                                                    <div className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full">
+                                                                        <BadgeDollarSign className="h-4 w-4" />
+                                                                        <span>{item.price} {t.clinics.currency}</span>
+                                                                        {item.originalPrice > item.price && (
+                                                                            <span className="text-xs line-through opacity-70 ml-1">{item.originalPrice}</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center justify-center">
+                                                                <Button
+                                                                    className="w-full md:w-auto px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-primary/20 transition-all active:scale-95"
+                                                                    onClick={() => handleBooking(item.name, item.price)}
+                                                                >
+                                                                    <Bot className={`${language === 'ar' ? 'ml-2' : 'mr-2'} h-5 w-5`} />
+                                                                    {surgeryT.bookNow}
+                                                                </Button>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <BadgeDollarSign className="h-4 w-4 text-muted-foreground" />
-                                                            <p><span className="font-semibold">{surgeryT.approxPrice}:</span> <span className="font-bold text-primary">{doctor.price}</span></p>
-                                                        </div>
-                                                    </CardContent>
-                                                </div>
-                                                <CardFooter className="p-0 w-full md:w-auto mt-4 md:mt-0 self-center">
-                                                    <Button className="w-full md:w-auto whitespace-nowrap px-6" onClick={() => handleBooking(surgery.name, doctor.name, doctor.location)}>
-                                                        <Bot className={`${language === 'ar' ? 'ml-2' : 'mr-2'} h-5 w-5`} />
-                                                        {surgeryT.bookNow}
-                                                    </Button>
-                                                </CardFooter>
-                                            </Card>
-                                        ))}
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        ))}
-                    </Accordion>
+                                                    </div>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            ))}
+                        </Accordion>
+                    ) : (
+                        <div className="text-center py-20 bg-card rounded-2xl border border-dashed border-muted-foreground/20">
+                            <Bot className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                            <p className="text-muted-foreground">{language === 'ar' ? 'لا توجد عمليات متاحة حالياً' : 'No surgeries available at the moment'}</p>
+                        </div>
+                    )}
                 </div>
             </main>
         </div>

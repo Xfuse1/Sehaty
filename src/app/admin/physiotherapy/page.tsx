@@ -47,7 +47,7 @@ interface PhysiotherapyPackage extends DocumentData {
   Price?: number;
   Duration?: string;
   Features?: string;
-  Decreption?: string;
+  Description?: string;
   isPopular?: boolean;
   discountPrice?: number;
 }
@@ -139,7 +139,7 @@ export default function PhysiotherapyPage() {
       name: pkg.PackageName ?? '',
       price: String(pkg.Price ?? ''),
       duration: pkg.Duration ?? '',
-      description: pkg.Decreption ?? '',
+      description: pkg.Description ?? '',
       features: pkg.Features ?? '',
       isPopular: !!pkg.isPopular,
       discount: String(pkg.discountPrice ?? ''),
@@ -195,7 +195,7 @@ export default function PhysiotherapyPage() {
           PackageName: trimmedName,
           Price: parsedPrice,
           Duration: durationValue,
-          Decreption: descriptionValue,
+          Description: descriptionValue,
           Features: featuresValue,
           isPopular: !!formValues.isPopular,
           discountPrice: formValues.discount ? parseFloat(formValues.discount) : null,

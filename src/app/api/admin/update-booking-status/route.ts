@@ -28,8 +28,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. التحقق من أن المستخدم أدمن
-    if (!decodedToken.admin) {
+    // 2. التحقق من أن المستخدم أدمن (من الـ Token أو من الـ Firestore)
+    let isAdmin = !!decodedToken.admin;
+
+    if (!isAdmin) {
+      const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+      if (userDoc.exists && userDoc.data()?.role === 'admin') {
+        isAdmin = true;
+      }
+    }
+
+    if (!isAdmin) {
       return NextResponse.json(
         { error: 'ليس لديك صلاحية أدمن' },
         { status: 403 }

@@ -23,10 +23,12 @@ export async function POST(req: Request) {
   try {
     const body: CreatePaymentRequest = await req.json();
 
-  const merchantId = env.KASHIER_MERCHANT_ID;
-  const apiKey = env.KASHIER_API_KEY; // used for hash generation
+    const merchantId = env.KASHIER_MERCHANT_ID;
+    const apiKey = env.KASHIER_API_KEY; // used for hash generation
     const currency = body.currency || env.KASHIER_CURRENCY || 'EGP';
-    const amount = typeof body.amount === 'string' ? body.amount : String(body.amount);
+    // تنسيق المبلغ ليكون برقمين عشريين دائماً لضمان تطابق الـ hash مع كاشير
+    const amountNum = typeof body.amount === 'string' ? parseFloat(body.amount) : body.amount;
+    const amount = amountNum.toFixed(2);
     const orderId = body.orderId;
 
     if (!merchantId || !apiKey || !orderId || !amount) {

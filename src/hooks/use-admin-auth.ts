@@ -21,7 +21,7 @@ interface AdminAuthState {
  * @returns حالة المصادقة للأدمن
  */
 export function useAdminAuth(redirectIfNotAdmin: boolean = true): AdminAuthState {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
   const pathname = usePathname();
@@ -40,6 +40,11 @@ export function useAdminAuth(redirectIfNotAdmin: boolean = true): AdminAuthState
     let isMounted = true;
 
     async function checkAdminStatus() {
+      // الانتظار حتى ينتهي Firebase من تحميل حالة المستخدم
+      if (isUserLoading) {
+        return;
+      }
+
       // إذا لم يكن هناك مستخدم مسجل دخول
       if (!user) {
         if (isMounted) {
@@ -60,41 +65,30 @@ export function useAdminAuth(redirectIfNotAdmin: boolean = true): AdminAuthState
         return;
       }
 
-      // إذا كان المستخدم مسجل دخول، التحقق من صلاحياته
+      // ... rest of the logic ...
       isCheckingRef.current = true;
 
       try {
-        // الحصول على ID token لإنشاء session
         const idTokenResult = await user.getIdTokenResult(true);
-        
-        // إنشاء session cookie
+
         try {
           await fetch("/api/admin/create-session", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              idToken: idTokenResult.token,
-            }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken: idTokenResult.token }),
           });
         } catch (sessionError) {
           console.error("Error creating session:", sessionError);
         }
 
-        // التحقق من Custom Claims أولاً
         let isAdmin = !!idTokenResult.claims.admin;
 
-        // إذا لم تكن موجودة في Custom Claims، التحقق من Firestore
         if (!isAdmin && firestore) {
           try {
             const userDocRef = doc(firestore, "users", user.uid);
             const userDoc = await getDoc(userDocRef);
             const userData = userDoc.data();
-
-            if (userData?.role === "admin") {
-              isAdmin = true;
-            }
+            if (userData?.role === "admin") isAdmin = true;
           } catch (firestoreError) {
             console.error("Error checking Firestore:", firestoreError);
           }
@@ -108,7 +102,6 @@ export function useAdminAuth(redirectIfNotAdmin: boolean = true): AdminAuthState
             error: null,
           });
 
-          // إعادة التوجيه إذا لم يكن أدمن
           if (!isAdmin && redirectIfNotAdmin && pathname !== "/admin/auth" && !hasRedirectedRef.current) {
             hasRedirectedRef.current = true;
             router.push("/admin/auth");
@@ -130,7 +123,6 @@ export function useAdminAuth(redirectIfNotAdmin: boolean = true): AdminAuthState
           }
         }
       }
-
       isCheckingRef.current = false;
     }
 
@@ -139,9 +131,7 @@ export function useAdminAuth(redirectIfNotAdmin: boolean = true): AdminAuthState
     return () => {
       isMounted = false;
     };
-    // Only depend on user?.uid - firestore and pathname changes shouldn't trigger re-check
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid]);
+  }, [user?.uid, isUserLoading, redirectIfNotAdmin, pathname]);
 
   return state;
 }

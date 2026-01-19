@@ -5,7 +5,7 @@ import { auth as adminAuth } from '@/firebase/admin';
 /**
  * API لإلغاء الحجز
  * - يتحقق من أن المستخدم هو صاحب الحجز
- * - يتحقق من أن الحجز قبله على الأقل 6 ساعات
+ * - يتحقق من أن الحجز في حالة pending (لم يتم تأكيده بعد)
  * - يعمل refund للدفع Online إن وجد
  */
 export async function POST(request: NextRequest) {
@@ -44,10 +44,41 @@ export async function POST(request: NextRequest) {
 
     // 3. جلب الحجز من Firestore
     const db = getFirestore();
-    const bookingRef = db.doc(`users/${userId}/bookings/${bookingId}`);
-    const bookingSnap = await bookingRef.get();
 
-    if (!bookingSnap.exists) {
+    // قائمة بالمسارات المحتملة للحجز
+    const possiblePaths = [
+      `users/${userId}/bookings/${bookingId}`,
+      `bookings/${bookingId}`,
+      `doctor_bookings/${bookingId}`,
+      `physiotherapy_bookings/${bookingId}`,
+      `nursing_care_bookings/${bookingId}`
+    ];
+
+    let bookingSnap = null;
+    let mainBookingRef = null;
+
+    for (const path of possiblePaths) {
+      const ref = db.doc(path);
+      const snap = await ref.get();
+      if (snap.exists) {
+        const data = snap.data();
+
+        // التحقق من الملكية بطرق مختلفة:
+        // 1. إذا كان المسار يبدأ بـ users/{userId} فهو بالتأكيد يخص المستخدم
+        const isUserSubcollection = path.startsWith(`users/${userId}/`);
+
+        // 2. إذا كان الحقل userId أو uid يطابق userId الحالي
+        const matchesUserField = (data?.userId === userId || data?.uid === userId);
+
+        if (isUserSubcollection || matchesUserField) {
+          bookingSnap = snap;
+          mainBookingRef = ref;
+          break;
+        }
+      }
+    }
+
+    if (!bookingSnap || !mainBookingRef) {
       return NextResponse.json(
         { error: 'الحجز غير موجود' },
         { status: 404 }
@@ -64,51 +95,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. التحقق من المدة الزمنية (6 ساعات على الأقل قبل الموعد)
-    const appointmentDate = new Date(booking?.appointmentDate);
-    const appointmentTime = booking?.appointmentTime; // مثل "09:00 ص"
-
-    // تحويل الوقت من "09:00 ص" إلى hours و minutes
-    let hours = 0;
-    let minutes = 0;
-    if (appointmentTime) {
-      const timeMatch = appointmentTime.match(/(\d+):(\d+)\s*(ص|م)/);
-      if (timeMatch) {
-        hours = parseInt(timeMatch[1]);
-        minutes = parseInt(timeMatch[2]);
-        const isPM = timeMatch[3] === 'م';
-
-        // تحويل إلى 24-hour format
-        if (isPM && hours !== 12) {
-          hours += 12;
-        } else if (!isPM && hours === 12) {
-          hours = 0;
-        }
-      }
-    }
-
-    appointmentDate.setHours(hours, minutes, 0, 0);
-
-    const now = new Date();
-    const timeDiffInHours = (appointmentDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-    if (timeDiffInHours < 6) {
+    // 4.5. التحقق من أن الحجز في حالة pending فقط (يمكن الإلغاء فقط عندما يكون pending)
+    const isPending = booking?.status === 'pending' || booking?.status === 'pending_confirmation';
+    if (!isPending) {
       return NextResponse.json(
-        {
-          error: 'لا يمكن إلغاء الحجز قبل الموعد بأقل من 6 ساعات',
-          remainingHours: timeDiffInHours.toFixed(1)
-        },
+        { error: 'لا يمكن إلغاء الحجز إلا عندما يكون في انتظار التأكيد' },
         { status: 400 }
       );
     }
 
-    // 6. إذا كانت طريقة الدفع "online"، نحاول عمل refund
+    // 5. إذا كانت طريقة الدفع "online"، نحاول عمل refund
     let refundStatus = null;
     if (booking?.paymentMethod === 'online') {
       try {
         // TODO: تنفيذ Kashier Refund API
         // const refundResult = await refundKashierPayment(booking.orderId, booking.fee);
-        // refundStatus = refundResult;
 
         // مؤقتاً، نسجل الطلب في حقل خاص
         refundStatus = {
@@ -127,13 +128,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. تحديث حالة الحجز
-    await bookingRef.update({
+    // 6. تحديث حالة الحجز في كل المواقع الممكنة لضمان التزامن
+    const updateData = {
       status: 'cancelled',
       cancelledAt: new Date().toISOString(),
       cancelledBy: userId,
       refundStatus: refundStatus,
-    });
+    };
+
+    // نحاول تحديث الحجز في كل المواقع الممكنة لضمان التزامن الكامل
+    const updatePromises = possiblePaths.map(path =>
+      db.doc(path).update(updateData).catch(() => {
+        // نتجاهل الأخطاء للمسارات غير الموجودة
+      })
+    );
+
+    await Promise.all(updatePromises);
 
     return NextResponse.json({
       success: true,

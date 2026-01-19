@@ -73,6 +73,28 @@ type Doctor = {
   isVerified?: boolean;
 };
 
+const createEmptyForm = () => ({
+  name: '',
+  name_en: '',
+  specialty: '',
+  specialty_en: '',
+  price: '',
+  experience: '',
+  overview: '',
+  overview_en: '',
+  location: '',
+  location_en: '',
+  whatsapp: '',
+  certifications: '',
+  image: '',
+  gender: 'male',
+  education: '',
+  workingHours: '',
+  languages: '',
+  tags: '',
+  isVerified: false,
+});
+
 export default function DoctorsPage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -84,6 +106,11 @@ export default function DoctorsPage() {
   const { isAdmin, isLoading: isAuthLoading, user } = useAdminAuth();
   const { language, t } = useLanguage();
   const router = useRouter();
+
+  const [formValues, setFormValues] = useState(createEmptyForm());
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDelete = async (doctor: Doctor) => {
     setDoctorToDelete(doctor);
@@ -112,6 +139,7 @@ export default function DoctorsPage() {
       tags: doctor.tags?.join(', ') || '',
       isVerified: doctor.isVerified || false,
     });
+    setValidationErrors({});
     setIsDialogOpen(true);
   };
 
@@ -148,45 +176,25 @@ export default function DoctorsPage() {
   const { data: doctors = [], isLoading } = useCollection<Doctor>(doctorsQuery);
   const doctorsList = doctors ?? [];
 
-  const createEmptyForm = () => ({
-    name: '',
-    name_en: '',
-    specialty: '',
-    specialty_en: '',
-    price: '',
-    experience: '',
-    overview: '',
-    overview_en: '',
-    location: '',
-    location_en: '',
-    whatsapp: '',
-    certifications: '',
-    image: '',
-    gender: 'male',
-    education: '',
-    workingHours: '',
-    languages: '',
-    tags: '',
-    isVerified: false,
-  });
-
-  const [formValues, setFormValues] = useState(createEmptyForm());
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openDialog = () => {
     setEditingDoctor(null);
     setFormValues(createEmptyForm());
     setSelectedFile(null);
+    setValidationErrors({});
     setIsDialogOpen(true);
   };
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = event.target as any;
-    setFormValues((prev) => ({
+    setFormValues((prev: any) => ({
       ...prev,
       [name]: type === 'checkbox' ? (event.target as any).checked : value,
     }));
+    // إزالة الخطأ عند البدء في الكتابة
+    if (validationErrors[name]) {
+      setValidationErrors((prev: any) => ({ ...prev, [name]: false }));
+    }
   };
 
   const handleSave = async () => {
@@ -201,7 +209,15 @@ export default function DoctorsPage() {
     const overviewValue = formValues.overview.trim();
     const imageValue = formValues.image.trim();
 
-    if (!trimmedName || !trimmedSpecialty || !formValues.name_en.trim() || !formValues.specialty_en.trim() || !priceValue) {
+    const newErrors: Record<string, boolean> = {};
+    if (!trimmedName) newErrors.name = true;
+    if (!trimmedSpecialty) newErrors.specialty = true;
+    if (!formValues.name_en.trim()) newErrors.name_en = true;
+    if (!formValues.specialty_en.trim()) newErrors.specialty_en = true;
+    if (!priceValue) newErrors.price = true;
+
+    if (Object.keys(newErrors).length > 0) {
+      setValidationErrors(newErrors);
       toast({
         variant: 'destructive',
         title: t.admin.dashboard.actions.error,
@@ -495,23 +511,27 @@ export default function DoctorsPage() {
               <TabsContent value="ar" className="space-y-4 mt-0 animate-in fade-in duration-300">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-bold">{translations.ar.admin.dashboard.doctorForm.nameAr}</Label>
+                    <Label className={`text-sm font-bold ${validationErrors.name ? 'text-destructive' : ''}`}>
+                      {translations.ar.admin.dashboard.doctorForm.nameAr} *
+                    </Label>
                     <Input
                       name="name"
                       placeholder="د. أحمد علي"
                       value={formValues.name}
                       onChange={handleInputChange}
-                      className="rounded-xl"
+                      className={`rounded-xl ${validationErrors.name ? 'border-destructive focus-visible:ring-destructive shadow-sm shadow-destructive/10' : ''}`}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-bold">{translations.ar.admin.dashboard.doctorForm.specialtyAr}</Label>
+                    <Label className={`text-sm font-bold ${validationErrors.specialty ? 'text-destructive' : ''}`}>
+                      {translations.ar.admin.dashboard.doctorForm.specialtyAr} *
+                    </Label>
                     <Input
                       name="specialty"
                       placeholder="استشاري جراحة"
                       value={formValues.specialty}
                       onChange={handleInputChange}
-                      className="rounded-xl"
+                      className={`rounded-xl ${validationErrors.specialty ? 'border-destructive focus-visible:ring-destructive shadow-sm shadow-destructive/10' : ''}`}
                     />
                   </div>
                 </div>
@@ -540,23 +560,27 @@ export default function DoctorsPage() {
               <TabsContent value="en" className="space-y-4 mt-0 animate-in fade-in duration-300">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-bold">{translations.en.admin.dashboard.doctorForm.nameEn}</Label>
+                    <Label className={`text-sm font-bold ${validationErrors.name_en ? 'text-destructive' : ''}`}>
+                      {translations.en.admin.dashboard.doctorForm.nameEn} *
+                    </Label>
                     <Input
                       name="name_en"
                       placeholder="Dr. Ahmed Ali"
                       value={formValues.name_en}
                       onChange={handleInputChange}
-                      className="rounded-xl"
+                      className={`rounded-xl ${validationErrors.name_en ? 'border-destructive focus-visible:ring-destructive shadow-sm shadow-destructive/10' : ''}`}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-bold">{translations.en.admin.dashboard.doctorForm.specialtyEn}</Label>
+                    <Label className={`text-sm font-bold ${validationErrors.specialty_en ? 'text-destructive' : ''}`}>
+                      {translations.en.admin.dashboard.doctorForm.specialtyEn} *
+                    </Label>
                     <Input
                       name="specialty_en"
                       placeholder="Surgical Consultant"
                       value={formValues.specialty_en}
                       onChange={handleInputChange}
-                      className="rounded-xl"
+                      className={`rounded-xl ${validationErrors.specialty_en ? 'border-destructive focus-visible:ring-destructive shadow-sm shadow-destructive/10' : ''}`}
                     />
                   </div>
                 </div>
@@ -585,14 +609,16 @@ export default function DoctorsPage() {
               <div className="border-t pt-6 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-bold">{t.admin.dashboard.doctorForm.price}</Label>
+                    <Label className={`text-sm font-bold ${validationErrors.price ? 'text-destructive' : ''}`}>
+                      {t.admin.dashboard.doctorForm.price} *
+                    </Label>
                     <Input
                       type="number"
                       name="price"
                       min="0"
                       value={formValues.price}
                       onChange={handleInputChange}
-                      className="rounded-xl"
+                      className={`rounded-xl ${validationErrors.price ? 'border-destructive focus-visible:ring-destructive shadow-sm shadow-destructive/10' : ''}`}
                     />
                   </div>
                   <div className="space-y-2">
@@ -713,7 +739,7 @@ export default function DoctorsPage() {
                             setSelectedFile(file);
                             const reader = new FileReader();
                             reader.onloadend = () => {
-                              setFormValues(prev => ({
+                              setFormValues((prev: any) => ({
                                 ...prev,
                                 image: reader.result as string
                               }));

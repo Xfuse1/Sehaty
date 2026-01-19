@@ -17,64 +17,73 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 
+import { BlogArticle } from '@/types/blog';
+import { getBlogArticles } from '@/lib/blog-service';
+
 export default function BlogPage() {
     const { t, language } = useLanguage();
-    const [selectedArticle, setSelectedArticle] = useState<any>(null);
-    const [articles, setArticles] = useState<any[]>([]);
+    const [selectedArticle, setSelectedArticle] = useState<BlogArticle | null>(null);
+    const [articles, setArticles] = useState<BlogArticle[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const firestore = useFirestore();
 
     useEffect(() => {
         const fetchArticles = async () => {
             try {
-                const q = query(collection(firestore, 'blog_articles'), orderBy('createdAt', 'desc'));
-                const querySnapshot = await getDocs(q);
-                const fetchedArticles = querySnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    // Fallback formatting for dates if needed
-                    date: doc.data().publishDate?.toDate
-                        ? doc.data().publishDate.toDate().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US')
-                        : doc.data().publishDate
-                }));
+                const fetchedArticles = await getBlogArticles(firestore);
 
                 if (fetchedArticles.length > 0) {
                     setArticles(fetchedArticles);
                 } else {
                     // Fallback to static articles from translations if DB is empty
-                    const staticArticles = [
+                    const staticArticles: any[] = [
                         {
-                            id: 1,
-                            title: t.blog.articles[0].title,
-                            excerpt: t.blog.articles[0].excerpt,
-                            fullContent: t.blog.articles[0].fullContent,
-                            category: t.blog.articles[0].category,
-                            author: t.blog.articles[0].author,
-                            date: t.blog.articles[0].date,
+                            id: '1',
+                            titleAr: t.blog.articles[0].title,
+                            titleEn: t.blog.articles[0].title,
+                            excerptAr: t.blog.articles[0].excerpt,
+                            excerptEn: t.blog.articles[0].excerpt,
+                            contentAr: t.blog.articles[0].fullContent,
+                            contentEn: t.blog.articles[0].fullContent,
+                            categoryAr: t.blog.articles[0].category,
+                            categoryEn: t.blog.articles[0].category,
+                            authorAr: t.blog.articles[0].author,
+                            authorEn: t.blog.articles[0].author,
+                            publishDate: t.blog.articles[0].date,
                             image: 'https://images.unsplash.com/photo-1628348068343-c6a848d2b6dd?auto=format&fit=crop&q=80',
                         },
                         {
-                            id: 2,
-                            title: t.blog.articles[1].title,
-                            excerpt: t.blog.articles[1].excerpt,
-                            fullContent: t.blog.articles[1].fullContent,
-                            category: t.blog.articles[1].category,
-                            author: t.blog.articles[1].author,
-                            date: t.blog.articles[1].date,
+                            id: '2',
+                            titleAr: t.blog.articles[1].title,
+                            titleEn: t.blog.articles[1].title,
+                            excerptAr: t.blog.articles[1].excerpt,
+                            excerptEn: t.blog.articles[1].excerpt,
+                            contentAr: t.blog.articles[1].fullContent,
+                            contentEn: t.blog.articles[1].fullContent,
+                            categoryAr: t.blog.articles[1].category,
+                            categoryEn: t.blog.articles[1].category,
+                            authorAr: t.blog.articles[1].author,
+                            authorEn: t.blog.articles[1].author,
+                            publishDate: t.blog.articles[1].date,
                             image: 'https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&q=80',
                         },
                         {
-                            id: 3,
-                            title: t.blog.articles[2].title,
-                            excerpt: t.blog.articles[2].excerpt,
-                            fullContent: t.blog.articles[2].fullContent,
-                            category: t.blog.articles[2].category,
-                            author: t.blog.articles[2].author,
-                            date: t.blog.articles[2].date,
+                            id: '3',
+                            titleAr: t.blog.articles[2].title,
+                            titleEn: t.blog.articles[2].title,
+                            excerptAr: t.blog.articles[2].excerpt,
+                            excerptEn: t.blog.articles[2].excerpt,
+                            contentAr: t.blog.articles[2].fullContent,
+                            contentEn: t.blog.articles[2].fullContent,
+                            categoryAr: t.blog.articles[2].category,
+                            categoryEn: t.blog.articles[2].category,
+                            authorAr: t.blog.articles[2].author,
+                            authorEn: t.blog.articles[2].author,
+                            publishDate: t.blog.articles[2].date,
                             image: 'https://images.unsplash.com/photo-1609220136736-443140cffec6?auto=format&fit=crop&q=80',
                         },
                     ];
-                    setArticles(staticArticles);
+                    setArticles(staticArticles as BlogArticle[]);
                 }
             } catch (error) {
                 console.error('Error fetching articles:', error);
@@ -106,10 +115,13 @@ export default function BlogPage() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
                         {articles.map((article) => {
-                            const title = language === 'ar' ? (article.titleAr || article.title) : (article.titleEn || article.title);
-                            const excerpt = language === 'ar' ? (article.excerptAr || article.excerpt) : (article.excerptEn || article.excerpt);
-                            const author = language === 'ar' ? (article.authorAr || article.author) : (article.authorEn || article.author);
-                            const category = language === 'ar' ? (article.categoryAr || article.category) : (article.categoryEn || article.category);
+                            const title = language === 'ar' ? article.titleAr : article.titleEn;
+                            const excerpt = language === 'ar' ? article.excerptAr : article.excerptEn;
+                            const author = language === 'ar' ? article.authorAr : article.authorEn;
+                            const category = language === 'ar' ? article.categoryAr : article.categoryEn;
+                            const date = article.publishDate?.toDate
+                                ? article.publishDate.toDate().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US')
+                                : article.publishDate?.toString() || '';
 
                             return (
                                 <Card key={article.id} className="overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 flex flex-col h-full border-border/50 group shadow-lg">
@@ -143,7 +155,7 @@ export default function BlogPage() {
                                                 <div className="p-1.5 bg-muted rounded-full">
                                                     <Calendar className="w-3.5 h-3.5" />
                                                 </div>
-                                                <span className="font-medium">{article.date}</span>
+                                                <span className="font-medium">{date}</span>
                                             </div>
                                         </div>
 
@@ -170,7 +182,7 @@ export default function BlogPage() {
                         {selectedArticle && (
                             <Image
                                 src={selectedArticle.image}
-                                alt={language === 'ar' ? (selectedArticle.titleAr || selectedArticle.title) : (selectedArticle.titleEn || selectedArticle.title)}
+                                alt={language === 'ar' ? selectedArticle.titleAr : selectedArticle.titleEn}
                                 fill
                                 className="object-cover"
                             />
@@ -178,19 +190,23 @@ export default function BlogPage() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                         <div className="absolute bottom-6 inset-x-6 md:bottom-10 md:inset-x-10">
                             <Badge className="mb-4 bg-primary text-primary-foreground px-4 py-1.5 rounded-full font-black text-sm shadow-xl">
-                                {language === 'ar' ? (selectedArticle?.categoryAr || selectedArticle?.category) : (selectedArticle?.categoryEn || selectedArticle?.category)}
+                                {language === 'ar' ? selectedArticle?.categoryAr : selectedArticle?.categoryEn}
                             </Badge>
                             <DialogTitle className="text-2xl md:text-4xl font-black font-headline text-white mb-4 line-clamp-2 leading-tight">
-                                {language === 'ar' ? (selectedArticle?.titleAr || selectedArticle?.title) : (selectedArticle?.titleEn || selectedArticle?.title)}
+                                {language === 'ar' ? selectedArticle?.titleAr : selectedArticle?.titleEn}
                             </DialogTitle>
                             <div className="flex items-center gap-6 text-sm text-white/90">
                                 <div className="flex items-center gap-2">
                                     <User className="w-4 h-4 text-primary" />
-                                    <span className="font-bold">{language === 'ar' ? (selectedArticle?.authorAr || selectedArticle?.author) : (selectedArticle?.authorEn || selectedArticle?.author)}</span>
+                                    <span className="font-bold">{language === 'ar' ? selectedArticle?.authorAr : selectedArticle?.authorEn}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Calendar className="w-4 h-4 text-primary" />
-                                    <span className="font-medium">{selectedArticle?.date}</span>
+                                    <span className="font-medium">
+                                        {selectedArticle?.publishDate?.toDate
+                                            ? selectedArticle.publishDate.toDate().toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US')
+                                            : selectedArticle?.publishDate?.toString() || ''}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -198,7 +214,7 @@ export default function BlogPage() {
 
                     <div className="p-6 md:p-10">
                         <DialogDescription className="text-lg md:text-xl text-foreground leading-[1.8] whitespace-pre-wrap font-medium">
-                            {language === 'ar' ? (selectedArticle?.contentAr || selectedArticle?.fullContent) : (selectedArticle?.contentEn || selectedArticle?.fullContent)}
+                            {language === 'ar' ? selectedArticle?.contentAr : selectedArticle?.contentEn}
                         </DialogDescription>
 
                         <div className="mt-12 flex justify-end">

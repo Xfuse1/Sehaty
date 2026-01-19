@@ -8,12 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useFirestore } from '@/firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, Timestamp } from 'firebase/firestore';
-import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Upload } from 'lucide-react';
+import { collection, addDoc, deleteDoc, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/language-context';
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import { compressImage } from '@/lib/image-utils';
 import Image from 'next/image';
 import {
     AlertDialog,
@@ -27,22 +28,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-interface BlogArticle {
-    id: string;
-    titleAr: string;
-    titleEn: string;
-    excerptAr: string;
-    excerptEn: string;
-    contentAr: string;
-    contentEn: string;
-    authorAr: string;
-    authorEn: string;
-    categoryAr: string;
-    categoryEn: string;
-    image: string;
-    publishDate: any;
-    createdAt: any;
-}
+import { BlogArticle } from '@/types/blog';
+import { getBlogArticles } from '@/lib/blog-service';
 
 export default function AdminBlogPage() {
     const { t, language } = useLanguage();
@@ -57,6 +44,7 @@ export default function AdminBlogPage() {
     const [isUploading, setIsUploading] = useState(false);
     const firestore = useFirestore();
     const { toast } = useToast();
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [formValues, setFormValues] = useState({
@@ -77,12 +65,7 @@ export default function AdminBlogPage() {
     useEffect(() => {
         const fetchArticles = async () => {
             try {
-                const q = query(collection(firestore, 'blog_articles'), orderBy('createdAt', 'desc'));
-                const querySnapshot = await getDocs(q);
-                const articlesData = querySnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                })) as BlogArticle[];
+                const articlesData = await getBlogArticles(firestore);
                 setArticles(articlesData);
             } catch (error) {
                 console.error('Error fetching articles:', error);
@@ -117,6 +100,7 @@ export default function AdminBlogPage() {
             image: '',
             publishDate: new Date().toISOString().split('T')[0]
         });
+        setSelectedFile(null);
         setIsDialogOpen(true);
     };
 
@@ -138,6 +122,7 @@ export default function AdminBlogPage() {
                 ? article.publishDate.toDate().toISOString().split('T')[0]
                 : (article.publishDate || new Date().toISOString().split('T')[0])
         });
+        setSelectedFile(null);
         setIsDialogOpen(true);
     };
 
@@ -168,8 +153,23 @@ export default function AdminBlogPage() {
 
         setIsSaving(true);
         try {
+            let finalImageUrl = formValues.image;
+
+            if (selectedFile) {
+                console.log('Starting compression for file:', selectedFile.name);
+                const compressedFile = await compressImage(selectedFile);
+                console.log(`Compression success. Size reduced from ${(selectedFile.size / 1024).toFixed(2)}KB to ${(compressedFile.size / 1024).toFixed(2)}KB`);
+
+                console.log('Starting Cloudinary upload...');
+                finalImageUrl = await uploadToCloudinary(compressedFile, 'blog');
+                console.log('Cloudinary upload success. URL:', finalImageUrl);
+            } else {
+                console.log('No new file selected, using existing image URL or empty:', finalImageUrl);
+            }
+
             const data = {
                 ...formValues,
+                image: finalImageUrl,
                 publishDate: Timestamp.fromDate(new Date(formValues.publishDate)),
                 updatedAt: Timestamp.now(),
             };
@@ -186,6 +186,7 @@ export default function AdminBlogPage() {
                 setArticles(prev => [{ id: docRef.id, ...data, createdAt: Timestamp.now() } as BlogArticle, ...prev]);
                 toast({ title: t.admin.dashboard.blogAdmin.title, description: t.admin.dashboard.actions.successUpdate });
             }
+            setSelectedFile(null);
             setIsDialogOpen(false);
         } catch (error) {
             toast({ variant: "destructive", title: t.admin.dashboard.actions.error });
@@ -194,19 +195,23 @@ export default function AdminBlogPage() {
         }
     };
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
+        if (file) {
+            console.log('File selected:', {
+                name: file.name,
+                size: `${(file.size / 1024).toFixed(2)} KB`,
+                type: file.type
+            });
+            setSelectedFile(file);
 
-        setIsUploading(true);
-        try {
-            const url = await uploadToCloudinary(file);
-            setFormValues(prev => ({ ...prev, image: url }));
-            toast({ title: "Image uploaded successfully" });
-        } catch (error) {
-            toast({ variant: "destructive", title: "Image upload failed" });
-        } finally {
-            setIsUploading(false);
+            // Fast preview using object URL
+            const previewUrl = URL.createObjectURL(file);
+            setFormValues(prev => ({
+                ...prev,
+                image: previewUrl
+            }));
+            console.log('Object URL created for fast preview');
         }
     };
 
@@ -262,7 +267,18 @@ export default function AdminBlogPage() {
                                                 <TableCell className="align-middle">
                                                     <div className="relative w-16 h-10 rounded-lg overflow-hidden border">
                                                         {article.image ? (
-                                                            <Image src={article.image} alt="article" fill className="object-cover" />
+                                                            <Image
+                                                                src={article.image}
+                                                                alt="article"
+                                                                fill
+                                                                className="object-cover"
+                                                                onError={(e) => {
+                                                                    console.error(`Failed to load image for article: ${article.id}`, {
+                                                                        url: article.image,
+                                                                        error: e
+                                                                    });
+                                                                }}
+                                                            />
                                                         ) : (
                                                             <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground">
                                                                 <ImageIcon className="h-4 w-4" />
@@ -349,7 +365,13 @@ export default function AdminBlogPage() {
                                                 <span className="text-xs text-muted-foreground font-medium">Uploading...</span>
                                             </div>
                                         ) : formValues.image ? (
-                                            <Image src={formValues.image} alt="Upload" fill className="object-cover" />
+                                            <Image
+                                                src={formValues.image}
+                                                alt="Upload"
+                                                fill
+                                                className="object-cover"
+                                                onError={() => console.error('Failed to load preview image:', formValues.image)}
+                                            />
                                         ) : (
                                             <div className="text-center p-4">
                                                 <ImageIcon className="h-8 w-8 mx-auto text-primary/40 mb-2" />
@@ -360,7 +382,7 @@ export default function AdminBlogPage() {
                                             <ImageIcon className="h-8 w-8 text-white" />
                                         </div>
                                     </div>
-                                    <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold">{t.admin.dashboard.blogAdmin.fields.publishDate}</label>

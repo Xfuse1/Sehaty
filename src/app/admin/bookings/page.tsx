@@ -83,11 +83,18 @@ export default function BookingsPage() {
             orderBy('createdAt', 'desc')
           );
           const bookingsSnapshot = await getDocs(bookingsQuery);
-          const userBookings = bookingsSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            serviceType: doc.data().serviceType || 'doctor'
-          })) as Booking[];
+          const userBookings = bookingsSnapshot.docs.map(doc => {
+            const data = doc.data();
+            // extract userId from path: users/{userId}/bookings/{bookingId}
+            const userId = doc.ref.parent.parent?.id;
+            return {
+              id: doc.id, // هذا هو الـ Document ID الحقيقي
+              _docId: doc.id,
+              userId: data.userId || userId,
+              ...data,
+              serviceType: data.serviceType || 'doctor'
+            };
+          }) as unknown as Booking[];
           allBookings.push(...userBookings);
         } catch (error: any) {
           if (error.code !== 'permission-denied') {
@@ -111,9 +118,11 @@ export default function BookingsPage() {
             const querySnapshot = await getDocs(q);
             const bookingsFromCollection = querySnapshot.docs.map(doc => ({
               id: doc.id,
+              _docId: doc.id,
               ...doc.data(),
-              serviceType: col.type
-            })) as Booking[];
+              serviceType: col.type,
+              _sourceCollection: col.name
+            })) as unknown as Booking[];
             allBookings.push(...bookingsFromCollection);
           } catch (error: any) {
             if (error.code !== 'permission-denied') {
@@ -122,10 +131,19 @@ export default function BookingsPage() {
           }
         }
 
-        // إزالة التكرار بناءً على الـ id
-        const uniqueBookings = Array.from(
-          new Map(allBookings.map(booking => [booking.id, booking])).values()
-        );
+        // إزالة التكرار بناءً على الـ id مع دمج البيانات لضمان عدم فقدان الـ userId
+        const bookingsMap = new Map<string, Booking>();
+        allBookings.forEach(booking => {
+          const existing = bookingsMap.get(booking.id);
+          if (existing) {
+            // دمج الحجزين مع تفضيل البيانات الأحدث (موجودة في existing حالياً بسبب الترتيب)
+            bookingsMap.set(booking.id, { ...booking, ...existing, userId: existing.userId || booking.userId });
+          } else {
+            bookingsMap.set(booking.id, booking);
+          }
+        });
+
+        const uniqueBookings = Array.from(bookingsMap.values());
 
         // ترتيب حسب التاريخ
         uniqueBookings.sort((a, b) => {
@@ -135,6 +153,7 @@ export default function BookingsPage() {
         });
 
         setBookings(uniqueBookings);
+        console.log('Bookings loaded:', uniqueBookings.slice(0, 3).map(b => ({ id: b.id, userId: b.userId, serviceType: b.serviceType })));
       } catch (error) {
         console.error('Error fetching bookings:', error);
       } finally {
@@ -309,6 +328,37 @@ export default function BookingsPage() {
 
       const token = await auth.currentUser.getIdToken();
 
+      // mapping service types to correct collection names
+      const collectionMapping: Record<string, string> = {
+        'nursing': 'nursing_care_bookings',
+        'physiotherapy': 'physiotherapy_bookings',
+        'doctor': 'doctor_bookings',
+        'استشارة طبية': 'doctor_bookings',
+        'كشف منزلي': 'doctor_bookings',
+        'تمريض': 'nursing_care_bookings',
+        'علاج طبيعي': 'physiotherapy_bookings'
+      };
+
+      // استخدام الجدول الأصلي إذا وجد، أو التخمين من النوع، أو افتراض أنه دكتور كحالة عامة
+      let collectionPath = (booking as any)._sourceCollection ||
+        (booking.serviceType ? collectionMapping[booking.serviceType] : null);
+
+      if (!collectionPath) {
+        if (booking.doctorId || booking.doctorName) collectionPath = 'doctor_bookings';
+        else if (booking.packageName?.includes('تمريض')) collectionPath = 'nursing_care_bookings';
+        else collectionPath = 'doctor_bookings'; // Default fallback
+      }
+
+      console.log('--- Database Update Debug ---');
+      console.log('Booking Object:', booking);
+      console.log('Target Status:', newStatus);
+      console.log('Request Payload:', {
+        bookingId: (booking as any)._docId || booking.id,
+        userId: booking.userId,
+        collectionPath,
+        newStatus
+      });
+
       const response = await fetch('/api/admin/update-booking-status', {
         method: 'POST',
         headers: {
@@ -316,9 +366,9 @@ export default function BookingsPage() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          bookingId: booking.id,
+          bookingId: (booking as any)._docId || booking.id,
           userId: booking.userId || undefined,
-          collectionPath: booking.serviceType ? `${booking.serviceType}_bookings` : undefined,
+          collectionPath,
           newStatus,
         }),
       });

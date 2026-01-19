@@ -6,41 +6,41 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Input } from "@/components/ui/input";
-import { Camera, Bot, Upload, Droplet, TestTube, Heart, Sun, FileDown, BookOpen, User, Loader2, X } from "lucide-react";
-import Link from "next/link";
+import { Bot, Upload, Droplet, TestTube, Heart, Sun, BookOpen, Loader2, X } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { useUser } from '@/firebase';
-import { useFirestore } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { savePatientPrescription } from '@/lib/patient-records';
 import { useLanguage } from '@/contexts/language-context';
+import { useCollection } from '@/firebase/firestore/use-collection';
 
 export default function LabServicesPage() {
   const { language, t } = useLanguage();
   const dir = language === 'ar' ? 'rtl' : 'ltr';
   const labT = t.servicePages.lab;
 
-  const commonTests = labT.items.map((item: any, index: number) => ({
-    name: item.name,
-    price: `${item.price} ${t.clinics.currency}`,
-    icon: [
+  const firestore = useFirestore();
+  const labTestsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'lab_tests');
+  }, [firestore]);
+
+  const { data, isLoading: isTestsLoading } = useCollection<any>(labTestsQuery);
+  const labTests = Array.isArray(data) ? data : [];
+
+  const getTestIcon = (index: number) => {
+    const icons = [
       <Sun key="0" className="h-8 w-8 text-amber-500" />,
       <Droplet key="1" className="h-8 w-8 text-red-500" />,
       <TestTube key="2" className="h-8 w-8 text-blue-500" />,
       <Heart key="3" className="h-8 w-8 text-rose-500" />,
-    ][index] || <TestTube className="h-8 w-8 text-primary" />,
-  }));
+    ];
+    return icons[index % icons.length];
+  };
 
-  const mockResults = [
-    { id: 1, name: language === 'ar' ? "صورة دم كاملة (CBC)" : "Complete Blood Count (CBC)", date: "2024-05-15", url: "#" },
-    { id: 2, name: language === 'ar' ? "تحليل فيتامين د (Vitamin D)" : "Vitamin D Test", date: "2024-03-22", url: "#" },
-    { id: 3, name: language === 'ar' ? "ملف الدهون (Lipid Profile)" : "Lipid Profile", date: "2024-03-22", url: "#" },
-  ];
-
-  const faqItems = labT.guide.faq.map((item: any) => ({
+  const faqItems = (labT.guide?.faq || []).map((item: any) => ({
     question: item.q,
     answer: item.a
   }));
@@ -48,7 +48,7 @@ export default function LabServicesPage() {
   const whatsappLink = "https://wa.me/201000476674";
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const db = useFirestore();
   const [testDescription, setTestDescription] = useState("");
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
@@ -261,63 +261,43 @@ export default function LabServicesPage() {
             <h2 className="text-3xl font-bold text-foreground">{labT.commonTests.title}</h2>
             <p className="text-muted-foreground mt-2">{labT.commonTests.subtitle}</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {commonTests.map((test) => (
-              <Card key={test.name} className="relative group flex flex-col break-words">
-                <CardHeader className="flex flex-col items-center text-center p-6">
-                  <div className="p-4 bg-primary/10 rounded-full mb-4">
-                    {test.icon}
-                  </div>
-                  <CardTitle className="text-lg font-semibold h-12 break-all">{test.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 pt-0 flex-grow text-center">
-                  <p className="text-primary font-bold text-2xl">{test.price}</p>
-                </CardContent>
-                <CardFooter className="p-4 pt-0">
-                  <Button className="w-full" variant="secondary" onClick={() => handleTestRequest(test.name)}>
-                    {labT.commonTests.orderButton}
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        {isUserLoading ? (
-          <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
-        ) : user ? (
-          <section>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-foreground">{labT.results.title}</h2>
-              <p className="text-muted-foreground mt-2">{labT.results.subtitle}</p>
+          {isTestsLoading ? (
+            <div className="flex justify-center p-12">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
-            <div className="max-w-3xl mx-auto space-y-4">
-              {mockResults.map(result => (
-                <Card key={result.id} className="flex items-center justify-between p-4">
-                  <div>
-                    <p className="font-semibold">{result.name}</p>
-                    <p className={`text-sm text-muted-foreground ${language === 'ar' ? 'font-arabic' : ''}`}>
-                      {language === 'ar' ? 'تاريخ:' : 'Date:'} {result.date}
-                    </p>
-                  </div>
-                  <Button variant="outline" size="icon" onClick={() => toast({ title: language === 'ar' ? "جاري تحميل الملف..." : "Downloading file..." })}>
-                    <FileDown className="h-5 w-5" />
-                    <span className="sr-only">{labT.results.download}</span>
-                  </Button>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {(labTests || []).map((test, index) => (
+                <Card key={test.id} className="relative group flex flex-col break-words">
+                  <CardHeader className="flex flex-col items-center text-center p-6">
+                    <div className="p-4 bg-primary/10 rounded-full mb-4">
+                      {getTestIcon(index)}
+                    </div>
+                    <CardTitle className="text-lg font-semibold h-12 break-all">{test.TestName}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 pt-0 flex-grow text-center">
+                    <div className="text-primary font-bold text-2xl">
+                      {test.discountPrice ? (
+                        <div className="flex flex-col">
+                          <span className="text-sm line-through text-muted-foreground">{test.Price} {t.clinics.currency}</span>
+                          <span>{test.discountPrice} {t.clinics.currency}</span>
+                        </div>
+                      ) : (
+                        `${test.Price} ${t.clinics.currency}`
+                      )}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="p-4 pt-0">
+                    <Button className="w-full" variant="secondary" onClick={() => handleTestRequest(test.TestName)}>
+                      {labT.commonTests.orderButton}
+                    </Button>
+                  </CardFooter>
                 </Card>
               ))}
             </div>
-          </section>
-        ) : (
-          <Card className="max-w-3xl mx-auto text-center p-8 bg-muted/50">
-            <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <CardTitle>{labT.results.loginRequired}</CardTitle>
-            <CardDescription className="mt-2">{labT.results.loginDesc}</CardDescription>
-            <Button asChild className="mt-6">
-              <Link href="/login">{language === 'ar' ? "تسجيل الدخول" : "Login"}</Link>
-            </Button>
-          </Card>
-        )}
+          )}
+        </section>
+
 
         <section>
           <div className="text-center mb-12">

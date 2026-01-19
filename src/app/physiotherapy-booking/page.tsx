@@ -28,7 +28,8 @@ function PhysiotherapyBookingFlow() {
     const { toast } = useToast();
     const { t, language } = useLanguage();
     const searchParams = useSearchParams();
-    const [pkg, setPackage] = useState<any>(null);
+    const [pkg, setPkg] = useState<any>(null);
+    const [isFirstBooking, setIsFirstBooking] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<string>("cash");
     const [isBooking, setIsBooking] = useState(false);
     const [patientDetails, setPatientDetails] = useState({
@@ -45,6 +46,30 @@ function PhysiotherapyBookingFlow() {
     const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false);
     const [tempVoiceBlob, setTempVoiceBlob] = useState<Blob | null>(null);
     const [tempVoiceUrl, setTempVoiceUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        const checkFirstBooking = async () => {
+            if (!user || !firestore) return;
+            try {
+                const { getDocs, query, collection, where, limit } = await import('firebase/firestore');
+                const bookingCollections = ['bookings', 'doctor_bookings', 'physiotherapy_bookings', 'nursing_care_bookings'];
+                const results = await Promise.all(
+                    bookingCollections.map(colName =>
+                        getDocs(query(collection(firestore, colName), where('userId', '==', user.uid), limit(1)))
+                    )
+                );
+                const hasAnyBooking = results.some(snap => !snap.empty);
+                setIsFirstBooking(!hasAnyBooking);
+            } catch (error) {
+                console.error("Error checking first booking:", error);
+            }
+        };
+        checkFirstBooking();
+    }, [user, firestore]);
+
+    const basePrice = pkg?.discountPrice || pkg?.price || pkg?.Price || 0;
+    const firstTimeDiscountPrice = isFirstBooking ? Math.round(basePrice * 0.75) : basePrice;
+    const finalPrice = firstTimeDiscountPrice;
 
     const whatsappLink = "https://wa.me/201000476674";
     const dir = language === 'ar' ? 'rtl' : 'ltr';
@@ -68,7 +93,7 @@ function PhysiotherapyBookingFlow() {
             try {
                 const parsedPackage = JSON.parse(decodeURIComponent(packageData));
                 if (JSON.stringify(parsedPackage) !== JSON.stringify(pkg)) {
-                    setPackage(parsedPackage);
+                    setPkg(parsedPackage);
                 }
             } catch (e) {
                 console.error("Failed to parse package data", e);
@@ -120,11 +145,11 @@ function PhysiotherapyBookingFlow() {
     const handleConfirmBooking = async () => {
         setIsBooking(true);
 
-        if (!user) {
+        if (!user || !pkg) {
             toast({
                 variant: "destructive",
                 title: t.booking.error,
-                description: t.common.loginRequired,
+                description: !user ? t.common.loginRequired : "Package data missing",
             });
             setIsBooking(false);
             return;
@@ -135,7 +160,9 @@ function PhysiotherapyBookingFlow() {
             id: bookingId,
             packageId: pkg.id,
             packageName: language === 'en' && pkg.PackageName_en ? pkg.PackageName_en : (pkg.name || pkg.PackageName),
-            packagePrice: pkg.price || pkg.Price,
+            packagePrice: finalPrice,
+            originalPrice: pkg.price || pkg.Price,
+            hasFirstBookingDiscount: isFirstBooking,
             serviceType: 'physiotherapy',
             userId: user.uid,
             patientName: patientDetails.name,
@@ -427,16 +454,30 @@ ${(bookingDetails as any).voiceRecordingUrl ? `\n\n*${t.booking.whatsapp.voiceMe
                 <div className="space-y-6">
                     <Card className="sticky top-24">
                         <CardHeader className="text-center">
-                            <CardTitle className="text-primary">{language === 'en' && pkg.PackageName_en ? pkg.PackageName_en : (pkg.name || pkg.PackageName)}</CardTitle>
-                            <CardDescription>{language === 'en' && pkg.Duration_en ? pkg.Duration_en : (pkg.duration || pkg.Duration)}</CardDescription>
+                            <CardTitle className="text-primary">{pkg ? (language === 'en' && pkg.PackageName_en ? pkg.PackageName_en : (pkg.name || pkg.PackageName)) : 'Loading...'}</CardTitle>
+                            <CardDescription>{pkg ? (language === 'en' && pkg.Duration_en ? pkg.Duration_en : (pkg.duration || pkg.Duration)) : ''}</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4 text-sm">
                             <div className="border-t pt-4">
                                 <h4 className="font-bold mb-4">{t.booking.summaryTitle}</h4>
-                                <p className="text-muted-foreground text-xs mb-4">{language === 'en' && pkg.Description_en ? pkg.Description_en : (pkg.description || pkg.Description)}</p>
+                                <p className="text-muted-foreground text-xs mb-4">{pkg ? (language === 'en' && pkg.Description_en ? pkg.Description_en : (pkg.description || pkg.Description)) : ''}</p>
                                 <div className="flex justify-between mt-4 pt-4 border-t">
                                     <span className="text-muted-foreground font-bold">{t.booking.packagePrice}</span>
-                                    <span className="font-bold text-lg text-primary">{pkg.price || pkg.Price} {t.booking.currencySar}</span>
+                                    <div className="text-right">
+                                        {(pkg.discountPrice > 0 || isFirstBooking) && (
+                                            <span className="text-xs line-through text-muted-foreground block">
+                                                {pkg.price || pkg.Price} {t.booking.currencySar}
+                                            </span>
+                                        )}
+                                        {isFirstBooking && (
+                                            <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200 mb-1">
+                                                {language === 'ar' ? 'خصم 25% لأول حجز' : '25% First Booking Discount'}
+                                            </Badge>
+                                        )}
+                                        <span className="font-bold text-lg text-primary block">
+                                            {finalPrice} {t.booking.currencySar}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                             <Button

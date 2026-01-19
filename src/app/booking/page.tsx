@@ -45,6 +45,67 @@ function BookingFlow() {
         phone: '',
     });
 
+    // Fetch existing bookings to check for first-time discount
+    const [isFirstBooking, setIsFirstBooking] = useState(false);
+    useEffect(() => {
+        const checkFirstBooking = async () => {
+            if (!user || !firestore) return;
+            try {
+                const { getDocs, query, collection, where, limit } = await import('firebase/firestore');
+
+                // قائمة بالمجموعات التي قد تحتوي على حجوزات سابقة
+                const bookingCollections = ['bookings', 'doctor_bookings', 'physiotherapy_bookings', 'nursing_care_bookings'];
+
+                const results = await Promise.all(
+                    bookingCollections.map(colName =>
+                        getDocs(query(collection(firestore, colName), where('userId', '==', user.uid), limit(1)))
+                    )
+                );
+
+                const hasAnyBooking = results.some(snap => !snap.empty);
+                setIsFirstBooking(!hasAnyBooking);
+            } catch (error) {
+                console.error("Error checking first booking:", error);
+            }
+        };
+        checkFirstBooking();
+    }, [user, firestore]);
+
+    const discountPrice = isFirstBooking ? (doctor?.price ? Math.round(doctor.price * 0.75) : 0) : null;
+    const finalPrice = discountPrice !== null ? discountPrice : (doctor?.price || 0);
+
+    const isToday = selectedDate && new Date(selectedDate).toDateString() === new Date().toDateString();
+
+    const filteredTimes = availableTimes.filter(time => {
+        if (!isToday) return true;
+
+        // Parse "09:00 ص" or "02:00 م"
+        const [hourStr, period] = time.split(' ');
+        let hour = parseInt(hourStr.split(':')[0]);
+        if (period === 'م' && hour !== 12) hour += 12;
+        if (period === 'ص' && hour === 12) hour = 0;
+
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+
+        // Add 1 hour buffer for same-day bookings
+        return hour > currentHour + 1;
+    });
+
+    // Automatically select tomorrow if all times for today are passed
+    useEffect(() => {
+        if (isToday && filteredTimes.length === 0) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            setSelectedDate(tomorrow);
+            toast({
+                title: language === 'ar' ? 'تنبيه' : 'Notice',
+                description: language === 'ar' ? 'انتهت مواعيد اليوم، تم اختيار الغد تلقائياً.' : 'Today\'s slots are closed. Tomorrow has been selected.',
+            });
+        }
+    }, [isToday, filteredTimes.length, language]);
+
     useEffect(() => {
         if (!isUserLoading && !user) {
             sessionStorage.setItem('redirectAfterLogin', '/booking');
@@ -137,21 +198,28 @@ function BookingFlow() {
             appointmentDate: selectedDate?.toISOString(),
             appointmentTime: selectedTime,
             paymentMethod: paymentMethod,
-            fee: doctor?.price || 0,
+            fee: finalPrice,
+            originalPrice: doctor?.price || 0,
+            hasDiscount: isFirstBooking,
+            discountAmount: isFirstBooking ? (doctor?.price || 0) - finalPrice : 0,
             whatsappReminder: whatsappReminder,
             attachmentsCount: attachments.length,
-            status: 'confirmed',
+            status: 'pending',
             createdAt: new Date().toISOString(),
         };
 
         try {
+            console.log('🔍 Creating booking with status:', bookingDetails.status);
+            console.log('📋 Full booking details:', bookingDetails);
+
             // حفظ الحجز في المكانين: top-level collection و user subcollection
             const globalBookingRef = doc(firestore, 'bookings', bookingId);
             const userBookingRef = doc(firestore, 'users', user.uid, 'bookings', bookingId);
 
+            const { setDoc } = await import('firebase/firestore');
             await Promise.all([
-                setDocumentNonBlocking(globalBookingRef, bookingDetails),
-                setDocumentNonBlocking(userBookingRef, bookingDetails),
+                setDoc(globalBookingRef, bookingDetails),
+                setDoc(userBookingRef, bookingDetails),
             ]);
 
             toast({
@@ -160,7 +228,41 @@ function BookingFlow() {
             });
 
             const dateString = bookingDetails.appointmentDate ? new Date(bookingDetails.appointmentDate).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US') : 'N/A';
-            router.push(`/booking-confirmation?bookingId=${bookingId}&patientName=${encodeURIComponent(bookingDetails.patientName)}&patientPhone=${encodeURIComponent(bookingDetails.patientPhone)}&appointmentDate=${encodeURIComponent(dateString)}&appointmentTime=${encodeURIComponent(bookingDetails.appointmentTime || '')}&doctorName=${encodeURIComponent(bookingDetails.doctorName)}`);
+            const redirectUrl = `/booking-confirmation?` +
+                `bookingId=${encodeURIComponent(bookingId)}&` +
+                `patientName=${encodeURIComponent(bookingDetails.patientName || user.displayName || 'Unnamed')}&` +
+                `patientPhone=${encodeURIComponent(bookingDetails.patientPhone || user.phoneNumber || 'N/A')}&` +
+                `appointmentDate=${encodeURIComponent(dateString)}&` +
+                `appointmentTime=${encodeURIComponent(bookingDetails.appointmentTime || '')}&` +
+                `doctorName=${encodeURIComponent(bookingDetails.doctorName || 'Doctor')}`;
+
+            if (paymentMethod === 'card') {
+                try {
+                    const response = await fetch('/api/kashier/create-payment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            amount: finalPrice,
+                            orderId: bookingId,
+                            description: `Booking with ${doctor.name}`,
+                            merchantRedirect: `${window.location.origin}${redirectUrl}`,
+                            failureRedirect: `${window.location.origin}/payment/failure`,
+                            metadata: { serviceType: 'doctor_appointment', userId: user.uid }
+                        }),
+                    });
+
+                    const data = await response.json();
+                    if (data?.checkoutUrl) {
+                        const redirectingUrl = `/payment/redirecting?checkoutUrl=${encodeURIComponent(data.checkoutUrl)}&orderId=${encodeURIComponent(bookingId)}`;
+                        window.location.href = redirectingUrl;
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Payment error:', err);
+                }
+            }
+
+            router.push(redirectUrl);
         } catch (error) {
             console.error(error);
             toast({
@@ -257,10 +359,22 @@ function BookingFlow() {
                                 <div className="pt-4 border-t">
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="text-sm text-muted-foreground">{t.booking.doctor.fee}</span>
-                                        <span className="text-lg font-bold text-primary">
-                                            {doctor.price || 200} {t.booking.currencySar}
-                                        </span>
+                                        <div className="text-right">
+                                            {isFirstBooking && doctor?.price && (
+                                                <span className="text-xs line-through text-muted-foreground block">
+                                                    {doctor.price} {t.booking.currencySar}
+                                                </span>
+                                            )}
+                                            <span className="text-lg font-bold text-primary">
+                                                {finalPrice} {t.booking.currencySar}
+                                            </span>
+                                        </div>
                                     </div>
+                                    {isFirstBooking && (
+                                        <Badge variant="outline" className="w-full justify-center bg-green-50 text-green-700 border-green-200 mb-2">
+                                            {language === 'ar' ? 'خصم 25% لأول حجز' : '25% First Booking Discount'}
+                                        </Badge>
+                                    )}
                                     <Badge variant="secondary" className="w-full justify-center">
                                         {t.booking.doctor.taxInclusive}
                                     </Badge>
@@ -292,20 +406,26 @@ function BookingFlow() {
 
                                 <div>
                                     <Label className="mb-3 block">{t.booking.doctor.chooseTime}</Label>
-                                    <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
-                                        {availableTimes.map((time) => (
-                                            <button
-                                                key={time}
-                                                onClick={() => setSelectedTime(time)}
-                                                className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${selectedTime === time
-                                                    ? 'border-primary bg-primary text-white'
-                                                    : 'border-border hover:border-primary/50 hover:bg-accent'
-                                                    }`}
-                                            >
-                                                {time}
-                                            </button>
-                                        ))}
-                                    </div>
+                                    {filteredTimes.length > 0 ? (
+                                        <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                                            {filteredTimes.map((time) => (
+                                                <button
+                                                    key={time}
+                                                    onClick={() => setSelectedTime(time)}
+                                                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${selectedTime === time
+                                                        ? 'border-primary bg-primary text-white'
+                                                        : 'border-border hover:border-primary/50 hover:bg-accent'
+                                                        }`}
+                                                >
+                                                    {time}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="p-4 bg-muted rounded-lg text-center text-sm text-muted-foreground">
+                                            {language === 'ar' ? 'لا توجد مواعيد متاحة لهذا اليوم' : 'No slots available for this day'}
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -504,7 +624,7 @@ function BookingFlow() {
                                 ) : (
                                     <>
                                         <CheckCircle2 className={`${language === 'ar' ? 'ml-2' : 'mr-2'} h-5 w-5`} />
-                                        {t.booking.doctor.confirmAndPay.replace('{price}', String(doctor.price || 200)).replace('{currency}', t.booking.currencySar)}
+                                        {t.booking.doctor.confirmAndPay.replace('{price}', String(finalPrice)).replace('{currency}', t.booking.currencySar)}
                                     </>
                                 )}
                             </Button>

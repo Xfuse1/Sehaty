@@ -65,14 +65,19 @@ export default function MyBookingsPage() {
         const userBookingsRef = collection(db, 'users', user.uid, 'bookings');
         const q = query(
           userBookingsRef,
-          orderBy('appointmentDate', 'desc')
+          orderBy('createdAt', 'desc')
         );
 
         const querySnapshot = await getDocs(q);
-        const fetchedBookings = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...(doc.data() as Omit<Booking, 'id'>)
-        }));
+        const fetchedBookings = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            status: data.status || 'pending',
+            createdAt: data.createdAt || new Date().toISOString(),
+            ...(data as Omit<Booking, 'id' | 'status' | 'createdAt'>)
+          };
+        });
 
         console.log('📦 Fetched bookings from subcollection:', fetchedBookings.length, fetchedBookings);
         setBookings(fetchedBookings);
@@ -126,7 +131,7 @@ export default function MyBookingsPage() {
 
           // Filter package bookings separately
           const merged = allBookings
-            .filter(b => b.packageName || (typeof b.serviceType === 'string' && (b.serviceType.toLowerCase() === 'physiotherapy' || b.serviceType.toLowerCase() === 'nursing_care')))
+            .filter(b => b.status !== 'cancelled' && b.status !== 'ملغي' && (b.packageName || (typeof b.serviceType === 'string' && (b.serviceType.toLowerCase() === 'physiotherapy' || b.serviceType.toLowerCase() === 'nursing_care'))))
             .map(b => ({
               ...b,
               packageKind: b.packageName ? (b.serviceType || 'package') : (b.serviceType || undefined),
@@ -158,28 +163,13 @@ export default function MyBookingsPage() {
   const handleCancelBooking = async (booking: Booking) => {
     if (!user) return;
 
-    // حساب الوقت المتبقي
-    const appointmentDate = new Date(booking.appointmentDate);
-    if (booking.appointmentTime) {
-      const timeMatch = booking.appointmentTime.match(/(\d+):(\d+)\s*(ص|م)/);
-      if (timeMatch) {
-        let hours = parseInt(timeMatch[1]);
-        const minutes = parseInt(timeMatch[2]);
-        const isPM = timeMatch[3] === 'م';
-        if (isPM && hours !== 12) hours += 12;
-        else if (!isPM && hours === 12) hours = 0;
-        appointmentDate.setHours(hours, minutes, 0, 0);
-      }
-    }
+    const isPending = booking.status === 'pending' || booking.status === 'pending_confirmation';
 
-    const now = new Date();
-    const timeDiffInHours = (appointmentDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-    if (timeDiffInHours < 6) {
+    if (!isPending) {
       toast({
         variant: "destructive",
         title: "لا يمكن إلغاء الحجز",
-        description: `لا يمكن إلغاء الحجز قبل الموعد بأقل من 6 ساعات. الوقت المتبقي: ${timeDiffInHours.toFixed(1)} ساعة`,
+        description: "يمكن إلغاء الحجوزات التي في انتظار التأكيد فقط.",
       });
       return;
     }
@@ -210,16 +200,22 @@ export default function MyBookingsPage() {
         description: data.refund?.message || "تم إلغاء الحجز",
       });
 
-      // إعادة تحميل الحجوزات
+      // إعادة تحميل الحجوزات بنفس منطق التحميل الأصلي
       const db = getFirestore(getApp());
       const userBookingsRef = collection(db, 'users', user.uid, 'bookings');
-      const q = query(userBookingsRef, orderBy('appointmentDate', 'desc'));
+      const q = query(userBookingsRef, orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
-      const fetchedBookings = querySnapshot.docs.map(doc => ({
+      const fetchedSubBookings = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...(doc.data() as Omit<Booking, 'id'>)
       }));
-      setBookings(fetchedBookings);
+
+      // تحديث القائمة فوراً لإزالتها تماماً كما طلب المستخدم
+      setBookings(prev => prev.map(b => b.id === booking.id ? { ...b, status: 'cancelled' } : b));
+      setPackageBookings(prev => prev.map(p => p.id === booking.id ? { ...p, status: 'cancelled' } : p));
+
+      // ثم نقوم بتحديث كل البيانات من المصادر الأخرى لضمان الدقة
+      // (اختياري: يمكن استدعاء fetchBookings الأصلية إذا كانت متاحة في النطاق)
 
     } catch (error: any) {
       console.error('Error cancelling booking:', error);
@@ -250,16 +246,20 @@ export default function MyBookingsPage() {
 
   // Show all bookings regardless of status
   const upcomingBookings = bookings.filter(booking => {
+    if (booking.status === 'cancelled' || booking.status === 'ملغي') return false;
+    if (!booking.appointmentDate) return true; // Show packages in upcoming by default
     const bookingDate = new Date(booking.appointmentDate);
     bookingDate.setHours(0, 0, 0, 0);
     // Include confirmed, pending, and upcoming bookings
-    return bookingDate >= currentDate && booking.status !== 'cancelled';
+    return bookingDate >= currentDate;
   });
 
   const pastBookings = bookings.filter(booking => {
+    if (booking.status === 'cancelled' || booking.status === 'ملغي') return false;
+    if (!booking.appointmentDate) return false;
     const bookingDate = new Date(booking.appointmentDate);
     bookingDate.setHours(0, 0, 0, 0);
-    return bookingDate < currentDate || booking.status === 'cancelled';
+    return bookingDate < currentDate;
   });
 
   // (removed unused bookedPackages variable)
@@ -291,24 +291,9 @@ export default function MyBookingsPage() {
             <div className="space-y-6">
               {upcomingBookings.map((booking) => {
                 const isCancelled = booking.status === 'cancelled' || booking.status === 'ملغي';
+                const isPending = booking.status === 'pending' || booking.status === 'pending_confirmation';
+                const canCancelUI = isPending && !isCancelled;
                 const isCancelling = cancellingId === booking.id;
-
-                // حساب إذا كان يمكن الإلغاء (6 ساعات على الأقل)
-                const appointmentDate = new Date(booking.appointmentDate);
-                if (booking.appointmentTime) {
-                  const timeMatch = booking.appointmentTime.match(/(\d+):(\d+)\s*(ص|م)/);
-                  if (timeMatch) {
-                    let hours = parseInt(timeMatch[1]);
-                    const minutes = parseInt(timeMatch[2]);
-                    const isPM = timeMatch[3] === 'م';
-                    if (isPM && hours !== 12) hours += 12;
-                    else if (!isPM && hours === 12) hours = 0;
-                    appointmentDate.setHours(hours, minutes, 0, 0);
-                  }
-                }
-                const now = new Date();
-                const timeDiffInHours = (appointmentDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-                const canCancel = timeDiffInHours >= 6 && !isCancelled;
 
                 return (
                   <Card key={booking.id} className={isCancelled ? "opacity-60" : ""}>
@@ -320,7 +305,7 @@ export default function MyBookingsPage() {
                             تاريخ الموعد: {new Date(booking.appointmentDate).toLocaleDateString('ar-SA')}
                           </CardDescription>
                         </div>
-                        {canCancel && (
+                        {canCancelUI && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button

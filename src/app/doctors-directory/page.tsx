@@ -40,10 +40,11 @@ export default function DoctorsDirectoryPage() {
 
     const doctorsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
-        return collection(firestore, 'directory_doctors');
+        return collection(firestore, 'doctors');
     }, [firestore]);
 
-    const { data: doctors, isLoading: doctorsLoading } = useCollection<Doctor>(doctorsQuery);
+    const { data, isLoading: doctorsLoading } = useCollection<Doctor>(doctorsQuery);
+    const doctors = Array.isArray(data) ? data : [];
 
     const handleBooking = (doctor: Doctor) => {
         if (!user) {

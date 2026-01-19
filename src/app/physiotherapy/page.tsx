@@ -40,13 +40,14 @@ export default function PhysiotherapyPage() {
 
     const physioPackages = rawPackages?.map(doc => {
         const name = (language === 'en' && doc.PackageName_en) ? doc.PackageName_en : (doc.PackageName || '');
-        const description = (language === 'en' && doc.Description_en) ? doc.Description_en : (doc.Description || '');
+        const description = (language === 'en' && doc.Description_en) ? doc.Description_en : (doc.Description || doc.Decreption || '');
         const featuresStr = (language === 'en' && doc.Features_en) ? doc.Features_en : (doc.Features || '');
 
         return {
             id: doc.id,
             name,
             price: doc.Price || 0,
+            discountPrice: doc.discountPrice || null,
             duration: (language === 'en' && doc.Duration_en) ? doc.Duration_en : (doc.Duration || ''),
             description,
             features: featuresStr ? featuresStr.split('\n').filter((f: string) => Boolean(f)) : [],
