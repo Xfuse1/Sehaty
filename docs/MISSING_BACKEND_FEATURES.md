@@ -1,230 +1,129 @@
-# تقرير: الميزات بدون Backend في مشروع Sehaty
+# تقرير محدث: الميزات بدون Backend في مشروع Sehaty
 
 ## 📋 نظرة عامة
-هذا التقرير يحدد جميع الميزات والصفحات الموجودة في Frontend ولكنها تفتقد إلى Backend API أو Admin Panel لإدارتها بشكل كامل.
+هذا التقرير يحدد جميع الميزات والصفحات الموجودة في Frontend ولكنها تفتقد إلى Backend API أو Admin Panel لإدارتها بشكل كامل. تم تحديث التقرير ليشمل ميزات إضافية تم اكتشافها بعد فحص دقيق للكود.
 
 ---
 
-## 🔴 ميزات حرجة تحتاج Backend فوراً
+## 🔴 ميزات حرجة تحتاج Backend (الأولوية القصوى)
 
-### 1. **نموذج التواصل (Contact Form)**
+### 1. **إدارة المرضى (Patients Management)**
+📁 **الموقع:** غير موجود (Missing UI + Backend)
+
+**المشكلة:**
+- الأدمن لا يرى قائمة المستخدمين المسجلين.
+- لا يمكن تعديل بيانات مريض أو حظره.
+- لا يمكن استعراض التاريخ المرضي لمريض معين من لوحة التحكم.
+
+**ما ينقص:**
+- ✅ Admin Page: `/admin/patients`
+- ✅ عرض قائمة المستخدمين والبحث فيهم
+- ✅ عرض تفاصيل المريض وسجل حجوزاته
+- ✅ API لحظر المستخدمين
+
+---
+
+### 2. **نموذج التواصل (Contact Form)**
 📁 **الموقع:** `src/app/contact/page.tsx`
 
 **المشكلة:**
-- النموذج موجود بالكامل في الـ UI
-- زر "إرسال" لا يفعل شيء (لا يوجد onClick handler)
-- لا يوجد API لحفظ الرسائل
-- لا يوجد admin panel لعرض الرسائل الواردة
+- النموذج موجود بالكامل في UI، ولكن الـ Backend كان مفقوداً (تم البدء فيه).
 
 **ما ينقص:**
-- ✅ API: `/api/contact/submit` - لحفظ الرسائل في Firestore
-- ✅ Collection: `contact_messages` في Firebase
-- ✅ Admin Page: `/admin/contact-messages` - لعرض والرد على الرسائل
-- ✅ Email Notification: إرسال إيميل للأدمن عند وصول رسالة جديدة
+- ✅ (تم التنفيذ) API: `/api/contact/submit`
+- ✅ (تم التنفيذ) Admin Page: `/admin/contact-messages`
 
 ---
 
-### 2. **طلبات التحاليل المنزلية (Lab Requests)**
-📁 **الموقع:** `src/app/lab-services/page.tsx`
-
-**الموجود حالياً:**
-- ✅ المستخدم يرفع صورة روشتة ويكتب ملاحظات
-- ✅ يتم الحفظ في `lab-requests` collection
-- ✅ يتم إرسال رسالة واتساب
-
-**ما ينقص:**
-- ❌ Admin Panel: `/admin/lab-requests` - لعرض جميع الطلبات
-- ❌ تحديث حالة الطلب (pending/processing/completed)
-- ❌ إضافة السعر المقدر
-- ❌ رفع نتائج التحاليل (PDF) للمريض
-
----
-
-### 3. **طلبات الأشعة المنزلية (Radiology Requests)**
-📁 **الموقع:** `src/app/radiology/page.tsx`
+### 3. **طلبات التحاليل والأشعة المنزلية (Lab & Radiology)**
+📁 **الموقع:** `src/app/lab-services/page.tsx`, `src/app/radiology/page.tsx`
 
 **المشكلة:**
-- يتم حفظ الروشتة في ملف المريض فقط
-- لا يوجد collection منفصل لـ "radiology_requests"
-- لا admin panel لمتابعة الطلبات
+- الطلبات تُخزن في مجلدات المستخدم ولكن لا يوجد مكان مركزي للأدمن لعرضها وإدارتها.
+- لا توجد طريقة لرفع النتائج للمريض.
 
 **ما ينقص:**
-- ✅ API: `/api/radiology/request` - لحفظ طلبات الأشعة
-- ✅ Collection: `radiology_requests`
-- ✅ Admin Page: `/admin/radiology-requests`
-- ✅ رفع نتائج الأشعة للمريض
+- ✅ Admin Panel: `/admin/lab-requests` و `/admin/radiology-requests`
+- ✅ دورة حياة الطلب (Pending -> Scheduled -> Results Uploaded -> Completed)
+- ✅ رفع ملفات PDF للنتائج
 
 ---
 
-### 4. **طلبات الروشتات من الصيدلية (Pharmacy Prescriptions)**
+### 4. **إدارة الصيدلية والروشتات**
 📁 **الموقع:** `src/app/pharmacy/page.tsx`
 
-**الموجود حالياً:**
-- ✅ رفع الروشتة وحفظها في `prescriptions` collection
-- ✅ حفظ في Airtable أيضاً
+**المشكلة:**
+- الروشتات تُرفع ولكن لا تصل لنظام إدارة مركزي.
+- منتجات الصيدلية مخزنة في ملف كود ثابت `src/lib/products-data.ts`.
 
 **ما ينقص:**
-- ❌ Admin Page: `/admin/pharmacy-prescriptions`
-- ❌ إضافة الأدوية المطلوبة وأسعارها
-- ❌ تحديث حالة الطلب (قيد المراجعة/جاهز/تم التوصيل)
-- ❌ ربط مع نظام التوصيل
+- ✅ Admin Page: `/admin/pharmacy-prescriptions`
+- ✅ نقل المنتجات إلى Firestore Database
+- ✅ Admin Page: `/admin/pharmacy-inventory` لإدارة المخزون والأسعار
 
 ---
 
-### 5. **نتائج الفحوصات السابقة (Medical Reports)**
-📁 **الموقع:** `src/app/radiology/page.tsx` (سطر 263-287)
+### 5. **لوحة التحكم المالية (Financial Dashboard)**
+📁 **الموقع:** غير موجود
 
 **المشكلة:**
-- النتائج المعروضة هي Mock Data ثابتة
-```typescript
-const mockResults = [
-  { id: 1, name: "أشعة سينية على الصدر", date: "2024-06-10", url: "#" },
-  { id: 2, name: "سونار على البطن", date: "2024-04-18", url: "#" }
-];
-```
+- يتم قبول المدفوعات عبر Kashier ولكن لا توجد لوحة لمتابعة الدخل اليومي/الشهري.
+- لا توجد آلية سهلة لاسترجاع الأموال (Refunds) إلا يدوياً من بوابة الدفع.
 
 **ما ينقص:**
-- ✅ Collection: `medical_reports` أو ربط بـ subcollection في ملف المستخدم
-- ✅ API لرفع النتائج من الأدمن
-- ✅ عرض النتائج الحقيقية للمستخدم
+- ✅ Admin Page: `/admin/finance`
+- ✅ تقارير الدخل
+- ✅ قائمة المعاملات وحالتها
 
 ---
 
-### 6. **نتائج التشخيص الذكي (Quiz Results)**
-📁 **الموقع:** `src/app/quiz/page.tsx`
+## 🟡 ميزات متوسطة الأهمية
+
+### 6. **نظام الإشعارات (Notifications Service)**
+📁 **الموقع:** `src/app/booking-confirmation/page.tsx`
 
 **المشكلة:**
-- المستخدم يكمل الاختبار ويحصل على توصية
-- التوصية تختفي بمجرد إغلاق الصفحة
-- لا يتم حفظ النتائج في أي مكان
+- عند الحجز، يظهر فقط QR Code.
+- لا يتم إرسال بريد إلكتروني أو SMS تأكيدي (رغم وجود نية لذلك في التصميم).
 
 **ما ينقص:**
-- ✅ API: `/api/quiz/save-results` - لحفظ نتائج الاختبار
-- ✅ Collection: `quiz_results` مع userId
-- ✅ عرض التوصيات السابقة في Profile
-- ✅ إظهار التوصية للطبيب عند الحجز
+- ✅ Cloud Function أو API endpoint لإرسال الإيميلات (SendGrid/Nodemailer).
+- ✅ قوالب رسائل (Templates).
 
----
-
-### 7. **التقييمات والمراجعات (Reviews & Ratings)**
-📁 **موجودة في:** `doctors-directory/page.tsx`, `pharmacy/page.tsx`
+### 7. **تفاعل المدونة (Blog Interactions)**
+📁 **الموقع:** `src/app/blog/page.tsx`
 
 **المشكلة:**
-- التقييمات معروضة فقط (Read-only)
-- لا يمكن للمستخدم إضافة تقييم جديد
-- لا يوجد نظام للتحقق من صحة التقييمات
+- المدونة للقراءة فقط. لا يوجد تعليقات أو إعجابات.
 
 **ما ينقص:**
-- ✅ API: `/api/reviews/submit`
-- ✅ Collection: `reviews` مع doctor_id/product_id
-- ✅ Admin Panel: لمراجعة وحذف التقييمات غير اللائقة
-- ✅ Validation: التأكد أن المستخدم حجز فعلياً قبل التقييم
+- ✅ Collection: `blog_comments`
+- ✅ API لإضافة تعليق
+- ✅ Admin Panel لمراجعة التعليقات
 
----
-
-## 🟡 ميزات مهمة لكن ليست حرجة
-
-### 8. **الإشعارات (Notifications)**
-**المشكلة:**
-- لا يوجد نظام إشعارات في الموقع
-- المستخدم لا يعرف تحديثات حجزه إلا بالتحقق يدوياً
-
-**ما ينقص:**
-- ✅ Real-time Notifications عند تغيير حالة الحجز
-- ✅ Email/SMS عند تأكيد الحجز
-- ✅ تذكير بالموعد قبل 24 ساعة
-
----
-
-### 9. **إدارة المخزون (Inventory Management) - الصيدلية**
-📁 **الموقع:** `src/lib/products-data.ts`
+### 8. **التقييمات والمراجعات (Reviews)**
+📁 **الموقع:** `doctors-directory`, `pharmacy`
 
 **المشكلة:**
-- بيانات الأدوية stored في ملف JavaScript ثابت
-- لا يمكن تحديث الأسعار أو المخزون من Admin Panel
+- التقييمات "Read-only" أو غير موجودة كخيار للمستخدم.
 
 **ما ينقص:**
-- ✅ نقل البيانات إلى `pharmacy_products` collection
-- ✅ Admin Page: `/admin/pharmacy-products`
-- ✅ تتبع المخزون (In Stock/Out of Stock)
+- ✅ API لإرسال التقييم بعد انتهاء الموعد.
+- ✅ نظام اعتماد التقييمات.
 
 ---
 
-### 10. **سجل التدقيق (Audit Logs)**
-**المهكلة:**
-- لا يوجد سجل لمن قام بتعديل ماذا ومتى
-- في الأنظمة الطبية، هذا ضروري للقوانين
+## 🟢 تحسينات مستقبلية
 
-**ما ينقص:**
-- ✅ Collection: `audit_logs`
-- ✅ تسجيل كل عملية حساسة (تعديل حجز، استرجاع مبلغ، إلخ)
-- ✅ Admin Page لعرض السجل
+### 9. **سجل التدقيق (Audit Logs)**
+- تسجيل كل حركة للأدمن (من عدل ماذا ومتى).
+
+### 10. **الأرشفة الطبية (Medical Records)**
+- تخزين تاريخي للمريض (روشتات سابقة، تقارير قديمة) بشكل منظم وقابل للبحث.
 
 ---
 
-### 11. **نظام الإحالة / Referrals**
-**المشكلة:**
-- لا يوجد نظام لإحالة المريض من طبيب إلى طبيب آخر
-- الطبيب لا يمكنه طلب تحاليل أو أشعة للمريض
+## 📊 الخلاصة
+المشروع يمتلك واجهة أمامية قوية جداً (Rich UI)، ولكن الـ Backend يفتقر إلى **أدوات الإدارة المركزية (Admin Tools)**. التركيز الحالي منصب على "تجربة المريض"، ولكن "تجربة المشغل/الأدمن" غائبة في معظم الوحدات (مختبر، أشعة، صيدلية، مالية).
 
-**ما ينقص:**
-- ✅ API للإحالة
-- ✅ Collection: `referrals`
-- ✅ UI للطبيب لإنشاء إحالة
-
----
-
-## 🟢 تحسينات مقترحة
-
-### 12. **نظام المفضلة (Favorites)**
-- إضافة أطباء أو منتجات للمفضلة
-- Collection: `user_favorites`
-
-### 13. **نظام الرسائل المباشرة**
-- دردشة بين المريض والطبيب/الصيدلية
-- Collection: `messages`
-
-### 14. **خطط العلاج (Treatment Plans)**
-- الطبيب يضع خطة علاجية طويلة المدى للمريض
-- Collection: `treatment_plans`
-
----
-
-## 📊 ملخص الأولويات
-
-| الأولوية | الميزة | التأثير على التجربة | سهولة التنفيذ |
-|---------|--------|----------------------|---------------|
-| 🔴 عالية جداً | Contact Form Backend | كبير | سهل |
-| 🔴 عالية جداً | Lab Requests Admin | كبير | متوسط |
-| 🔴 عالية جداً | Radiology Requests Admin | كبير | متوسط |
-| 🔴 عالية | Pharmacy Prescriptions Admin | كبير | متوسط |
-| 🔴 عالية | Medical Reports (real data) | كبير | متوسط |
-| 🟡 متوسطة | Quiz Results Saving | متوسط | سهل |
-| 🟡 متوسطة | Reviews System | متوسط | معقد |
-| 🟡 متوسطة | Notifications | كبير | معقد |
-| 🟢 منخفضة | Inventory Management | صغير | متوسط |
-| 🟢 منخفضة | Audit Logs | صغير (قانوني) | سهل |
-
----
-
-## 🎯 الخطوات التالية الموصى بها
-
-### المرحلة 1 (أسبوع واحد):
-1. ✅ Contact Form Backend + Admin Panel
-2. ✅ Lab Requests Admin Panel
-3. ✅ Radiology Requests System (كامل)
-
-### المرحلة 2 (أسبوعين):
-4. ✅ Pharmacy Prescriptions Admin
-5. ✅ Medical Reports System
-6. ✅ Quiz Results Storage
-
-### المرحلة 3 (شهر):
-7. ✅ Reviews & Ratings System
-8. ✅ Notifications System
-9. ✅ Inventory Management
-
----
-
-**تم إعداد هذا التقرير في:** 19 يناير 2026  
-**المشروع:** Sehaty - نظام إدارة العيادات متعدد المستأجرين
+**التوصية:** البدء فوراً بإنشاء **إدارة المرضى (Patients Management)** و **إدارة الطلبات (Orders Management)** لكل قسم.

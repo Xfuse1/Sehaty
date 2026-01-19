@@ -38,7 +38,7 @@ export default function AdminPharmacyPage() {
     const { isAdmin, isLoading: isAuthLoading } = useAdminAuth();
     const firestore = useFirestore();
     const { toast } = useToast();
-    const pharmaT = t.admin.pharmaAdmin;
+    const pharmaT = t.admin.dashboard.pharmaAdmin;
 
     useEffect(() => {
         const fetchRequests = async () => {
@@ -77,15 +77,15 @@ export default function AdminPharmacyPage() {
             ));
 
             toast({
-                title: t.admin.actions.successUpdate,
+                title: t.admin.dashboard.actions.successUpdate,
                 description: pharmaT.status[newStatus as keyof typeof pharmaT.status] || newStatus,
             });
         } catch (error) {
             console.error('Error updating status:', error);
             toast({
                 variant: "destructive",
-                title: t.admin.actions.error,
-                description: t.admin.actions.errorSaving,
+                title: t.admin.dashboard.actions.error,
+                description: t.admin.dashboard.actions.errorSaving,
             });
         } finally {
             setUpdatingId(null);
