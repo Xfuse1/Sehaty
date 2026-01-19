@@ -7,30 +7,44 @@ let app: any;
 
 try {
     const apps = getApps();
-    app = apps && apps.length ? apps[0] : initializeApp();
-} catch (e) {
-    const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '';
-    let serviceAccount: Record<string, any> | null = null;
-
-    try {
-        serviceAccount = raw ? JSON.parse(raw) : null;
-    } catch (err) {
-        // fallthrough - we'll try other credentials below
-    }
-
-    if (serviceAccount && typeof serviceAccount.project_id === 'string') {
-        app = initializeApp({
-            credential: cert(serviceAccount as any),
-        });
-    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        app = initializeApp({
-            credential: applicationDefault(),
-        });
+    if (apps && apps.length) {
+        app = apps[0];
     } else {
-        throw new Error(
-            'Firebase admin not configured. Set FIREBASE_SERVICE_ACCOUNT_KEY (JSON) or GOOGLE_APPLICATION_CREDENTIALS (path to JSON file) in your environment.'
-        );
+        const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+        let serviceAccount = null;
+
+        if (raw) {
+            try {
+                // التعامل مع الأسطر الجديدة إذا كانت موجودة كـ \n نصي
+                const processedRaw = raw.replace(/\\n/g, '\n');
+                serviceAccount = JSON.parse(processedRaw);
+            } catch (err) {
+                console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', err);
+            }
+        }
+
+        if (serviceAccount && serviceAccount.project_id) {
+            app = initializeApp({
+                credential: cert(serviceAccount),
+            });
+        } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+            app = initializeApp({
+                credential: applicationDefault(),
+            });
+        } else {
+            // في Vercel، قد يعمل initializeApp() بدون وسائط إذا كانت البيئة مهيأة مسبقاً (Firebase App Hosting)
+            // ولكننا سنحاول تهيئته بشكل افتراضي كحل أخير
+            try {
+                app = initializeApp();
+            } catch (initErr) {
+                console.error('Firebase Admin final fallback failed:', initErr);
+                throw new Error('Firebase admin not configured properly.');
+            }
+        }
     }
+} catch (e) {
+    console.error('Firebase Admin Initialization Error:', e);
+    throw e;
 }
 
 export const db = getFirestore(app);

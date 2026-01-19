@@ -89,11 +89,19 @@ export async function GET(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error('Error searching doctors:', error);
+        console.error('CRITICAL: Error searching doctors API:', error);
+
+        // محاولة تقديم تفاصيل أكثر للأدمن في بيئة التطوير أو Vercel Logs
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorStack = error instanceof Error ? error.stack : '';
+
         return NextResponse.json(
             {
+                success: false,
                 error: 'Failed to search doctors',
-                details: error instanceof Error ? error.message : 'Unknown error'
+                details: errorMessage,
+                // لا تظهر الـ stack في الإنتاج ولكننا نحتاجه الآن للتشخيص
+                debug: process.env.NODE_ENV === 'development' ? errorStack : undefined
             },
             { status: 500 }
         );
