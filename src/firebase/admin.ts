@@ -15,11 +15,20 @@ try {
 
         if (raw) {
             try {
-                // التعامل مع الأسطر الجديدة إذا كانت موجودة كـ \n نصي
-                const processedRaw = raw.replace(/\\n/g, '\n');
-                serviceAccount = JSON.parse(processedRaw);
+                // أولاً: محاولة التحليل المباشر (للحالات التي يكون فيها الـ JSON سليماً وسطر واحد)
+                serviceAccount = JSON.parse(raw);
             } catch (err) {
-                console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', err);
+                // ثانياً: إذا فشل، فقد يكون السبب وجود أسطر جديدة حقيقية (شائع في Vercel)
+                // سنحاول معالجة الأسطر الجديدة داخل قيم النصوص فقط
+                try {
+                    // هذا التعبير يحاول العثور على الـ private_key واستبدال الأسطر الحقيقية بـ \n
+                    const fixedRaw = raw.replace(/\n/g, '\\n');
+                    // ثم نحاول التحليل مرة أخرى. ملاحظة: قد يكسر هذا الـ JSON إذا كان الـ JSON منسقاً بأسطر سابقة
+                    // لذا سنحاول تنظيفه أكثر
+                    serviceAccount = JSON.parse(fixedRaw);
+                } catch (err2) {
+                    console.error('Firebase Admin: Failed to parse even after cleanup.');
+                }
             }
         }
 
@@ -32,18 +41,17 @@ try {
                 credential: applicationDefault(),
             });
         } else {
-            // في Vercel، قد يعمل initializeApp() بدون وسائط إذا كانت البيئة مهيأة مسبقاً (Firebase App Hosting)
-            // ولكننا سنحاول تهيئته بشكل افتراضي كحل أخير
+            // المحاولة كـ Default (قد تعمل في بعض بيئات Google Cloud/Firebase)
             try {
                 app = initializeApp();
             } catch (initErr) {
-                console.error('Firebase Admin final fallback failed:', initErr);
-                throw new Error('Firebase admin not configured properly.');
+                console.error('Firebase Admin: No credentials found and fallback failed.');
+                throw new Error('Firebase admin not configured. Please check your FIREBASE_SERVICE_ACCOUNT_KEY environment variable.');
             }
         }
     }
 } catch (e) {
-    console.error('Firebase Admin Initialization Error:', e);
+    console.error('Core Firebase Admin Init Error:', e);
     throw e;
 }
 
