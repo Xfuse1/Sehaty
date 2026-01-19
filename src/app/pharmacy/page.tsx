@@ -1,25 +1,45 @@
 
 "use client"
 
-import { useState, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, Camera, Bot, Star, X } from "lucide-react";
+import { Search, Camera, Bot, Star, X, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
-import { productsData } from "@/lib/products-data";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
-import { useFirestore } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { savePrescriptionToAirtable } from '@/lib/airtable';
 import { useLanguage } from '@/contexts/language-context';
 
+interface Product {
+  id: number;
+  name: { ar: string; en: string };
+  description: { ar: string; en: string };
+  price: number;
+  rating: number;
+  image: string;
+  category: string;
+}
+
+interface SearchResponse {
+  success: boolean;
+  data: Product[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
+  error?: string;
+}
 
 export default function PharmacyPage() {
   const { language, t } = useLanguage();
@@ -32,10 +52,73 @@ export default function PharmacyPage() {
   const [prescriptionText, setPrescriptionText] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
   const db = useFirestore();
+
+  // دالة البحث من الخادم
+  const searchProducts = useCallback(async (searchQuery: string, category: string, pageNum: number = 1, append: boolean = false) => {
+    setIsLoading(true);
+
+    try {
+      const params = new URLSearchParams({
+        q: searchQuery,
+        category: category,
+        lang: language,
+        page: pageNum.toString(),
+        limit: '20'
+      });
+
+      const response = await fetch(`/api/pharmacy/search?${params}`);
+      const result: SearchResponse = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to search products');
+      }
+
+      if (append) {
+        setProducts(prev => [...prev, ...result.data]);
+      } else {
+        setProducts(result.data);
+      }
+
+      setHasMore(result.pagination.hasMore);
+      setPage(pageNum);
+    } catch (err) {
+      console.error('Search error:', err);
+      toast({
+        variant: 'destructive',
+        title: language === 'ar' ? 'خطأ في البحث' : 'Search Error',
+        description: err instanceof Error ? err.message : 'Failed to load products'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [language, toast]);
+
+  // تحميل البيانات الأولية
+  useEffect(() => {
+    searchProducts('', 'all', 1);
+  }, [searchProducts]);
+
+  // البحث مع debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      searchProducts(searchTerm, activeTab, 1);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, activeTab, searchProducts]);
+
+  const handleLoadMore = () => {
+    searchProducts(searchTerm, activeTab, page + 1, true);
+  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -88,14 +171,6 @@ export default function PharmacyPage() {
       setIsUploading(false);
     }
   };
-  const filteredProducts = productsData.filter(product => {
-    const name = product.name[language as 'ar' | 'en'] || product.name.ar;
-    const description = product.description[language as 'ar' | 'en'] || product.description.ar;
-    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = activeTab === 'all' || product.category === activeTab;
-    return matchesSearch && matchesCategory;
-  });
 
   return (
     <div className="bg-background text-foreground" dir={dir}>
@@ -252,52 +327,82 @@ export default function PharmacyPage() {
               </TabsList>
             </Tabs>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-            {filteredProducts.map((product) => {
-              const name = product.name[language as 'ar' | 'en'] || product.name.ar;
-              const description = product.description[language as 'ar' | 'en'] || product.description.ar;
-              return (
-                <Card key={product.id} className="relative group flex flex-col break-words">
-                  <CardHeader className="p-0">
-                    <div className="relative w-full h-48 bg-card flex items-center justify-center">
-                      <Image
-                        src={product.image}
-                        alt={name}
-                        fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                        style={{ objectFit: 'contain' }}
-                        className="transition-transform duration-300 group-hover:scale-110 p-4"
-                      />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 flex-grow">
-                    <CardTitle className="text-lg font-semibold mb-2 h-12 break-all">{name}</CardTitle>
-                    <p className="text-sm text-muted-foreground mb-3 h-20 overflow-hidden">{description}</p>
-                    <div className="flex items-center gap-1 text-accent">
-                      <Star className="w-5 h-5 fill-current" />
-                      <span className="font-bold">{product.rating}</span>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="p-4 pt-0 flex-col items-start gap-4">
-                    <p className="text-primary font-bold text-xl">{product.price.toFixed(2)} {t.clinics.currency}</p>
-                    <Button asChild className="w-full" variant="secondary">
-                      <Link href={`${whatsappLink}?text=${encodeURIComponent(language === 'ar' ? `أرغب في طلب منتج: ${name}` : `I would like to order product: ${name}`)}`} target="_blank">
-                        {pharmaT.orderNow}
-                      </Link>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              );
-            })}
-            {filteredProducts.length === 0 && (
-              <div className="text-center text-muted-foreground py-16 col-span-full">
-                <p className="text-lg">{pharmaT.noProducts}</p>
+          {isLoading && products.length === 0 ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                {products.map((product) => {
+                  const name = product.name[language as 'ar' | 'en'] || product.name.ar;
+                  const description = product.description[language as 'ar' | 'en'] || product.description.ar;
+                  return (
+                    <Card key={product.id} className="relative group flex flex-col break-words">
+                      <CardHeader className="p-0">
+                        <div className="relative w-full h-48 bg-card flex items-center justify-center">
+                          <Image
+                            src={product.image}
+                            alt={name}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                            style={{ objectFit: 'contain' }}
+                            className="transition-transform duration-300 group-hover:scale-110 p-4"
+                          />
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-4 flex-grow">
+                        <CardTitle className="text-lg font-semibold mb-2 h-12 break-all">{name}</CardTitle>
+                        <p className="text-sm text-muted-foreground mb-3 h-20 overflow-hidden">{description}</p>
+                        <div className="flex items-center gap-1 text-accent">
+                          <Star className="w-5 h-5 fill-current" />
+                          <span className="font-bold">{product.rating}</span>
+                        </div>
+                      </CardContent>
+                      <CardFooter className="p-4 pt-0 flex-col items-start gap-4">
+                        <p className="text-primary font-bold text-xl">{product.price.toFixed(2)} {t.clinics.currency}</p>
+                        <Button asChild className="w-full" variant="secondary">
+                          <Link href={`${whatsappLink}?text=${encodeURIComponent(language === 'ar' ? `أرغب في طلب منتج: ${name}` : `I would like to order product: ${name}`)}`} target="_blank">
+                            {pharmaT.orderNow}
+                          </Link>
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  );
+                })}
+                {products.length === 0 && (
+                  <div className="text-center text-muted-foreground py-16 col-span-full">
+                    <p className="text-lg">{pharmaT.noProducts}</p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+
+              {/* زر تحميل المزيد */}
+              {hasMore && products.length > 0 && (
+                <div className="flex justify-center mt-12">
+                  <Button
+                    onClick={handleLoadMore}
+                    disabled={isLoading}
+                    variant="outline"
+                    size="lg"
+                    className="min-w-[200px]"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {language === 'ar' ? 'جاري التحميل...' : 'Loading...'}
+                      </>
+                    ) : (
+                      language === 'ar' ? 'تحميل المزيد' : 'Load More'
+                    )}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
         </section>
       </main>
-    </div>
+    </div >
   );
 }
 

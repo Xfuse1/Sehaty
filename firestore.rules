@@ -292,5 +292,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // Contact Messages - Anyone can create, only admins can read/update/delete
+    match /contact_messages/{messageId} {
+      allow create: if true; // Anyone can send a contact message
+      allow read, update, delete: if isAdmin(); // Only admins can manage messages
+    }
   }
 }

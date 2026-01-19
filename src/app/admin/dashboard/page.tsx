@@ -23,7 +23,8 @@ import {
   Sparkles,
   Users,
   BookOpen,
-  Pill
+  Pill,
+  Mail
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/language-context';
@@ -153,6 +154,14 @@ export default function AdminDashboardPage() {
       href: "/admin/pharmacy",
       color: "from-blue-400/20 to-blue-500/5",
       iconColor: "text-blue-500"
+    },
+    {
+      title: language === 'ar' ? 'رسائل التواصل' : 'Contact Messages',
+      desc: language === 'ar' ? 'إدارة رسائل العملاء والاستفسارات' : 'Manage customer messages and inquiries',
+      icon: <Mail className="h-6 w-6" />,
+      href: "/admin/contact-messages",
+      color: "from-green-500/20 to-green-600/5",
+      iconColor: "text-green-500"
     },
     {
       title: t.admin.dashboard.settings.title,

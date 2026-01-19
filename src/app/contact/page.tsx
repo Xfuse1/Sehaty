@@ -1,14 +1,84 @@
 "use client";
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Phone, Mail, MapPin, Clock, Send } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, Send, Loader2, CheckCircle } from 'lucide-react';
 import { useLanguage } from '@/contexts/language-context';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ContactPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { toast } = useToast();
+
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validation
+    if (!formData.name || !formData.email || !formData.message) {
+      toast({
+        variant: 'destructive',
+        title: language === 'ar' ? 'خطأ' : 'Error',
+        description: language === 'ar' ? 'جميع الحقول مطلوبة' : 'All fields are required'
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('/api/contact/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setIsSuccess(true);
+        setFormData({ name: '', email: '', message: '' });
+
+        toast({
+          title: language === 'ar' ? '✅ تم الإرسال بنجاح!' : '✅ Sent Successfully!',
+          description: result.message || (language === 'ar' ? 'سنتواصل معك قريباً' : 'We will contact you soon'),
+        });
+
+        // إعادة تعيين الحالة بعد 3 ثواني
+        setTimeout(() => setIsSuccess(false), 3000);
+      } else {
+        throw new Error(result.error || 'Failed to send message');
+      }
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      toast({
+        variant: 'destructive',
+        title: language === 'ar' ? 'خطأ في الإرسال' : 'Submission Error',
+        description: error instanceof Error ? error.message : (language === 'ar' ? 'حدث خطأ، حاول مرة أخرى' : 'An error occurred, please try again')
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-background pb-20 pt-10">
@@ -76,24 +146,68 @@ export default function ContactPage() {
           <div className="lg:col-span-2">
             <Card className="p-8 shadow-lg">
               <h2 className="text-2xl font-bold mb-6 text-start" dir="auto">{t.contact.formTitle}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div className="space-y-2 text-start" dir="auto">
-                  <label className="text-sm font-medium">{t.common.name}</label>
-                  <Input placeholder={t.contact.namePlaceholder} />
+              <form onSubmit={handleSubmit}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div className="space-y-2 text-start" dir="auto">
+                    <label className="text-sm font-medium">{t.common.name}</label>
+                    <Input
+                      name="name"
+                      placeholder={t.contact.namePlaceholder}
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      disabled={isSubmitting}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2 text-start" dir="auto">
+                    <label className="text-sm font-medium">{t.common.email}</label>
+                    <Input
+                      type="email"
+                      name="email"
+                      placeholder={t.contact.emailPlaceholder}
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      disabled={isSubmitting}
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2 text-start" dir="auto">
-                  <label className="text-sm font-medium">{t.common.email}</label>
-                  <Input type="email" placeholder={t.contact.emailPlaceholder} />
+                <div className="space-y-2 mb-8 text-start" dir="auto">
+                  <label className="text-sm font-medium">{t.common.message}</label>
+                  <Textarea
+                    name="message"
+                    placeholder={t.contact.messagePlaceholder}
+                    className="min-h-[150px]"
+                    value={formData.message}
+                    onChange={handleInputChange}
+                    disabled={isSubmitting}
+                    required
+                  />
                 </div>
-              </div>
-              <div className="space-y-2 mb-8 text-start" dir="auto">
-                <label className="text-sm font-medium">{t.common.message}</label>
-                <Textarea placeholder={t.contact.messagePlaceholder} className="min-h-[150px]" />
-              </div>
-              <Button className="w-full md:w-auto px-8 gap-2" size="lg">
-                <Send className="w-4 h-4" />
-                {t.contact.sendButton}
-              </Button>
+                <Button
+                  type="submit"
+                  className="w-full md:w-auto px-8 gap-2"
+                  size="lg"
+                  disabled={isSubmitting || isSuccess}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {language === 'ar' ? 'جاري الإرسال...' : 'Sending...'}
+                    </>
+                  ) : isSuccess ? (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      {language === 'ar' ? 'تم الإرسال!' : 'Sent!'}
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      {t.contact.sendButton}
+                    </>
+                  )}
+                </Button>
+              </form>
             </Card>
           </div>
         </div>
